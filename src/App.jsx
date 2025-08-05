@@ -9,6 +9,8 @@ import UserDashboard from "./pages/UserDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { ToastContainer } from "react-toastify";
 import MessageHistoryPage from "./pages/MessageHistoryPage";
+import EnquiriesPage from "./pages/EnquiresPage";
+import ClientConfigPage from "./pages/ClientConfigPage"; 
 import "./App.css";
 
 function App() {
@@ -31,6 +33,7 @@ function App() {
           <Route path="overview" element={<OverviewPage />} />
           <Route path="companies" element={<CompaniesPage />} />
           <Route path="chatbots" element={<ChatbotPage />} />
+          <Route path="config" element={ <ClientConfigPage/>} />
           <Route path="add-admin" element={<AddAdminPage />} />
         </Route>
 
@@ -49,6 +52,15 @@ function App() {
           element={
             <ProtectedRoute role="user">
               <MessageHistoryPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/user/enquiries/:chatbotId"
+          element={
+            <ProtectedRoute role="user">
+              <EnquiriesPage />
             </ProtectedRoute>
           }
         />

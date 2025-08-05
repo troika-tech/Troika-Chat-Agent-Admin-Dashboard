@@ -225,7 +225,7 @@ const UserDashboard = () => {
   const userPercentage = Math.round((usage.unique_users / userLimit) * 100);
 
   return (
-    <Layout>
+    <Layout chatbotId={company?.chatbot_id}>
       <div className="max-w-6xl ml-64 mx-auto p-6 sm:p-10 space-y-10 font-[Inter,sans-serif]">
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

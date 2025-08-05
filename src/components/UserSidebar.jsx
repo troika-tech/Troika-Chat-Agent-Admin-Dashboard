@@ -1,25 +1,28 @@
-// src/components/Sidebar.jsx
 import React from "react";
-import { LayoutDashboard, MessageSquare, LogOut } from "lucide-react";
+import { LayoutDashboard, MessageSquare, LogOut, Inbox } from "lucide-react"; // ✅ Add Inbox icon
 import { useLocation } from "react-router-dom";
-import logo from '../../public/dashboard-logo.png'
+import logo from "../../public/dashboard-logo.png";
 
-const menuItems = [
-  {
-    name: "Overview",
-    icon: <LayoutDashboard size={18} />,
-    path: "/user/dashboard",
-  },
-  {
-    name: "Message History",
-    icon: <MessageSquare size={18} />,
-    path: "/user/message-history",
-  },
-];
 
-// Replace with router logic later
+export default function Sidebar({ chatbotId }) {
+  const menuItems = [
+    {
+      name: "Overview",
+      icon: <LayoutDashboard size={18} />,
+      path: "/user/dashboard",
+    },
+    {
+      name: "Message History",
+      icon: <MessageSquare size={18} />,
+      path: "/user/message-history",
+    },
+    {
+      name: "Enquiries", // ✅ New menu item
+      icon: <Inbox size={18} />,
+      path: `/user/enquiries/${chatbotId}`,
+    },
+  ];
 
-export default function Sidebar() {
   const handleLogout = () => {
     localStorage.clear();
     window.location.href = "/login";
@@ -27,6 +30,7 @@ export default function Sidebar() {
 
   const location = useLocation();
   const activePath = location.pathname;
+
   return (
     <aside className="w-64 fixed h-screen bg-[#f4f6ff] shadow-sm px-6 py-8 flex flex-col justify-between">
       {/* Top Section */}
