@@ -5,6 +5,7 @@ import {
   Bot,
   UserPlus,
   LogOut,
+  Settings, // I'll use a settings icon for Client Config
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -17,7 +18,7 @@ const Sidebar = () => {
     navigate("/");
     setTimeout(() => {
       window.location.reload();
-    }, 500); // slight delay so toast shows before reload
+    }, 500);
   };
 
   const navItemClass = ({ isActive }) =>
@@ -52,6 +53,12 @@ const Sidebar = () => {
           <NavLink to="/dashboard/add-admin" className={navItemClass}>
             <UserPlus className="mr-3 h-5 w-5" />
             Add Admin
+          </NavLink>
+
+          {/* New Client Config link */}
+          <NavLink to="/dashboard/config" className={navItemClass}>
+            <Settings className="mr-3 h-5 w-5" />
+            Client Config
           </NavLink>
         </nav>
       </div>
