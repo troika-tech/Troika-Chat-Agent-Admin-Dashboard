@@ -12,6 +12,7 @@ import MessageHistoryPage from "./pages/MessageHistoryPage";
 import EnquiriesPage from "./pages/EnquiresPage";
 import ClientConfigPage from "./pages/ClientConfigPage"; 
 import "./App.css";
+import CustomizePage from "./pages/CustomizePage";
 
 //Test commit
 
@@ -37,6 +38,7 @@ function App() {
           <Route path="chatbots" element={<ChatbotPage />} />
           <Route path="config" element={ <ClientConfigPage/>} />
           <Route path="add-admin" element={<AddAdminPage />} />
+          <Route path="customize" element={<CustomizePage />} />
         </Route>
 
         {/* User route */}
