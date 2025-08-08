@@ -14,7 +14,6 @@ import ClientConfigPage from "./pages/ClientConfigPage";
 import "./App.css";
 import CustomizePage from "./pages/CustomizePage";
 
-//Test commit
 
 function App() {
   return (
