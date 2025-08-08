@@ -1,24 +1,40 @@
+// src/components/ChatbotPreview.js
+
 import React from "react";
 import styled, { createGlobalStyle } from "styled-components";
 import { IoSend } from "react-icons/io5";
 import { FiMic } from "react-icons/fi";
 import * as FaIcons from "react-icons/fa";
 
-// ... (No changes to styled-components or helper functions)
-const FontInjector = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Inter&family=Roboto&family=Arial&display=swap');
+// --- FIXED: This component now dynamically injects ONLY the selected font ---
+// It uses the 'fontFamily' prop to build the correct Google Fonts URL.
+// In ChatbotPreview.jsx
+const familyToWeights = (family) => {
+  // Broad default for most families
+  const defaultWeights = "wght@400;500;600;700";
+  // Script fonts typically only need 400
+  const scriptFamilies = new Set(["Pacifico", "Lobster", "Caveat"]);
+  // Mono families: common weights
+  const monoFamilies = new Set(["Source Code Pro", "Inconsolata"]);
+  if (scriptFamilies.has(family)) return "wght@400";
+  if (monoFamilies.has(family)) return "wght@400;700";
+  // Serif families: 400;700 sufficient
+  const serifFamilies = new Set([
+    "Lora",
+    "Playfair Display",
+    "Merriweather",
+    "Times New Roman",
+  ]);
+  if (serifFamilies.has(family)) return "wght@400;700";
+  return defaultWeights;
+};
+
+const DynamicFontInjector = createGlobalStyle`
+  @import url('https://fonts.googleapis.com/css2?family=${(p) =>
+    p.fontFamily.replace(/ /g, "+")}:${(p) =>
+  familyToWeights(p.fontFamily)}&display=swap');
 `;
-const IconWrapper = styled.div`
-  background: ${(props) => props.bgColor || "#6366f1"};
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  color: white;
-`;
+
 const Chatbox = styled.div`
   width: 100%;
   height: 100%;
@@ -28,42 +44,53 @@ const Chatbox = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: ${(props) => props.fontFamily || "Inter"}, sans-serif;
+  /* This CSS rule correctly applies the font family name */
+  font-family: "${(p) => p.fontFamily || "Inter"}", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
+    "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
 `;
+
 const Header = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  background: ${(props) => props.bgColor || "linear-gradient(90deg, #e53988, #5b37eb)"};
-  color: #FFFFFF;
+  background: ${(props) =>
+    props.bgColor || "linear-gradient(90deg, #e53988, #5b37eb)"};
+  color: #ffffff;
   flex-shrink: 0;
 `;
+
 const HeaderLeft = styled.div`
   display: flex;
   align-items: center;
 `;
+
 const Avatar = styled.img`
   width: 45px;
   height: 45px;
   border-radius: 50%;
   margin-right: 0.75rem;
 `;
+
 const TitleContainer = styled.div`
   display: flex;
   flex-direction: column;
 `;
+
 const BotName = styled.div`
   font-weight: 700;
   font-size: 1.25rem;
   line-height: 1.2;
 `;
+
 const BotSubtitle = styled.div`
   font-size: 0.8rem;
   font-weight: 400;
-  color: #E0E0E0;
+  color: #e0e0e0;
   line-height: 1.2;
 `;
+
 const CloseButton = styled.button`
   background: none;
   border: none;
@@ -78,13 +105,15 @@ const CloseButton = styled.button`
     transform: rotate(90deg);
   }
 `;
+
 const ChatContainer = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
   padding: 1.25rem;
   overflow-y: auto;
-  background-image: ${(props) => (props.bgImage ? `url(${props.bgImage})` : "none")};
+  background-image: ${(props) =>
+    props.bgImage ? `url(${props.bgImage})` : "none"};
   background-size: cover;
   background-position: center;
 `;
@@ -138,6 +167,17 @@ const SuggestionButton = styled.button`
     }
   }
 `;
+const IconWrapper = styled.div`
+  background: ${(props) => props.bgColor || "#6366f1"};
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: white;
+`;
 const InputContainer = styled.div`
   flex-shrink: 0;
   padding: 1rem;
@@ -174,12 +214,10 @@ const SendButton = styled.button`
   flex-shrink: 0;
 `;
 
-// --- Main Preview Component ---
 const ChatbotPreview = ({
   botSubtitle,
   welcomeMessage,
   suggestions,
-  // The global 'suggestionBg' prop is removed
   headerColor,
   buttonColor,
   textColor,
@@ -188,11 +226,14 @@ const ChatbotPreview = ({
 }) => {
   return (
     <>
-      <FontInjector />
+      <DynamicFontInjector fontFamily={fontFamily} />
       <Chatbox fontFamily={fontFamily}>
         <Header bgColor={headerColor}>
           <HeaderLeft>
-            <Avatar src="https://i.pravatar.cc/150?u=supa-agent-avatar" alt="avatar" />
+            <Avatar
+              src="https://raw.githubusercontent.com/troika-tech/Asset/refs/heads/main/supa-7-aug.png"
+              alt="avatar"
+            />
             <TitleContainer>
               <BotName>Supa Agent</BotName>
               <BotSubtitle>{botSubtitle}</BotSubtitle>
@@ -208,7 +249,9 @@ const ChatbotPreview = ({
             </MessageBubble>
           </div>
           <div>
-            <p style={{ fontSize: "13px", color: "#666", marginBottom: "10px" }}>
+            <p
+              style={{ fontSize: "13px", color: "#666", marginBottom: "10px" }}
+            >
               Or try one of these:
             </p>
             <SuggestionsContainer>
@@ -216,7 +259,6 @@ const ChatbotPreview = ({
                 const IconComponent = FaIcons[suggestion.icon];
                 return suggestion.label ? (
                   <SuggestionButton key={index}>
-                    {/* --- REVERTED: Use the 'bg' from the individual suggestion object --- */}
                     <IconWrapper bgColor={suggestion.bg}>
                       {IconComponent ? (
                         <IconComponent size={16} />

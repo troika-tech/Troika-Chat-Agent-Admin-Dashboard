@@ -93,7 +93,7 @@ const OptGroupLabel = styled.li`
 `;
 
 
-// --- Helper Functions (same as before) ---
+// --- Helper Functions ---
 const iconNames = Object.keys(FaIcons);
 
 const categorizeIcons = (names) => {
@@ -130,7 +130,6 @@ const IconPicker = ({ value, onChange }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const pickerRef = useRef(null);
 
-  // Filter and categorize icons based on the search term
   const categorizedIcons = useMemo(() => {
     const filtered = iconNames.filter(name =>
       name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -138,7 +137,6 @@ const IconPicker = ({ value, onChange }) => {
     return categorizeIcons(filtered);
   }, [searchTerm]);
 
-  // Handle clicks outside the dropdown to close it
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (pickerRef.current && !pickerRef.current.contains(event.target)) {
