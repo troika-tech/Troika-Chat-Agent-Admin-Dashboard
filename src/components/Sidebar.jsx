@@ -1,37 +1,30 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+import { useAuth } from "../context/AuthContext"; // Import the useAuth hook
 import {
   LayoutDashboard,
   Building2,
   Bot,
   UserPlus,
   LogOut,
-  Settings, // I'll use a settings icon for Client Config
+  Settings,
+  ShieldCheck, // A better icon for "Manage Admins"
 } from "lucide-react";
-import { toast } from "react-toastify";
 
 const Sidebar = () => {
-  const navigate = useNavigate();
-
-  const logout = () => {
-    localStorage.clear();
-    toast.success("Logged out successfully!");
-    navigate("/");
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
-  };
+  // Use the user and logout function from the AuthContext
+  const { user, logout } = useAuth();
 
   const navItemClass = ({ isActive }) =>
     `flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
       isActive
-        ? "bg-blue-100 text-blue-600 font-semibold"
-        : "text-gray-600 hover:bg-gray-100 hover:text-blue-600"
+        ? "bg-blue-100 text-blue-600 font-semibold shadow-sm"
+        : "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
     }`;
 
   return (
     <aside className="h-screen fixed w-64 bg-white border-r border-gray-200 p-4 hidden md:flex flex-col justify-between shadow-md">
       <div>
-        <h2 className="text-2xl font-bold text-blue-600 mb-6 text-center tracking-wide">
+        <h2 className="text-2xl font-bold text-blue-600 mb-8 text-center tracking-wide">
           Troika Tech
         </h2>
         <nav className="space-y-2">
@@ -50,21 +43,23 @@ const Sidebar = () => {
             Manage Chatbots
           </NavLink>
 
-          <NavLink to="/dashboard/add-admin" className={navItemClass}>
-            <UserPlus className="mr-3 h-5 w-5" />
-            Add Admin
-          </NavLink>
-
-          {/* New Client Config link */}
           <NavLink to="/dashboard/config" className={navItemClass}>
             <Settings className="mr-3 h-5 w-5" />
             Client Config
           </NavLink>
+
+          {/* MODIFIED: This link is now only visible to super admins */}
+          {user && user.isSuperAdmin && (
+            <NavLink to="/dashboard/manage-admins" className={navItemClass}>
+              <ShieldCheck className="mr-3 h-5 w-5" />
+              Manage Admins
+            </NavLink>
+          )}
         </nav>
       </div>
 
       <button
-        onClick={logout}
+        onClick={logout} // Use the logout function from the context
         className="flex cursor-pointer items-center px-4 py-2 rounded-lg text-sm font-medium text-red-500 hover:text-white hover:bg-red-500 transition-all"
       >
         <LogOut className="mr-3 h-5 w-5" />

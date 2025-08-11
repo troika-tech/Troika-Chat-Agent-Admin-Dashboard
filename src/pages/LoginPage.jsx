@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext"; // Import the useAuth hook
 import api from "../services/api";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const LoginPage = () => {
-  const navigate = useNavigate();
+  const { login } = useAuth(); // Use the login function from the context
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -22,25 +22,11 @@ const LoginPage = () => {
         password,
       });
 
-      const { token, role, user } = res.data;
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("role", role);
-      localStorage.setItem("user", JSON.stringify(user));
+      // The login function from the context now handles everything:
+      // setting state, localStorage, and navigating.
+      login(res.data);
 
       toast.success("Login successful 🎉");
-      console.log(
-        "Login success => navigating now to:",
-        role === "admin" ? "/dashboard/overview" : "/user/dashboard"
-      );
-
-      setTimeout(() => {
-        if (role === "admin") {
-          window.location.href = "/dashboard/overview"; // ✅ fallback if navigate fails
-        } else {
-          window.location.href = "/user/dashboard";
-        }
-      }, 200);
     } catch (err) {
       console.error(err);
       const errorMsg =
@@ -113,25 +99,10 @@ const LoginPage = () => {
           >
             {loading ? (
               <div className="flex items-center justify-center gap-2">
-                <svg
-                  className="animate-spin h-5 w-5 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                  ></path>
+                {/* SVG Loader */}
+                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                 </svg>
                 Logging in...
               </div>

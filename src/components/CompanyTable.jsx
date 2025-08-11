@@ -1,20 +1,19 @@
+// src/components/CompanyTable.js
+
 import { useState } from "react";
-import CompanyModal from "./AddCompanyModal";
 import UploadContextModal from "./UploadContextModal";
+import AddChatbotModal from "./AddChatbotModal";
 import api from "../services/api";
 import { toast } from "react-toastify";
-import AddChatbotModal from "./AddChatbotModal";
 
-const CompanyTable = ({ companies, refresh }) => {
-  const [selectedCompany, setSelectedCompany] = useState(null);
+const CompanyTable = ({ companies, refresh, onEditCompany }) => {
+  const [selectedCompanyForAdd, setSelectedCompanyForAdd] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showCompanyModal, setShowCompanyModal] = useState(false);
 
   const handleCreateChatbot = async (companyId, name) => {
     try {
       const token = localStorage.getItem("adminToken");
-
-      const response = await api.post(
+      await api.post(
         "/chatbot/create",
         { companyId, name },
         {
@@ -23,7 +22,6 @@ const CompanyTable = ({ companies, refresh }) => {
           },
         }
       );
-
       toast.success("Chatbot created ✅");
       refresh();
     } catch (error) {
@@ -35,7 +33,8 @@ const CompanyTable = ({ companies, refresh }) => {
     }
   };
 
-  const handleDeleteChatbot = async (chatbotId) => {
+  const handleDeleteChatbot = async (e, chatbotId) => {
+    e.stopPropagation();
     if (!window.confirm("Are you sure you want to delete this chatbot?"))
       return;
 
@@ -52,7 +51,8 @@ const CompanyTable = ({ companies, refresh }) => {
     }
   };
 
-  const handleDeleteCompany = async (companyId) => {
+  const handleDeleteCompany = async (e, companyId) => {
+    e.stopPropagation();
     if (
       !window.confirm(
         "This will delete the company and all its chatbots. Continue?"
@@ -74,62 +74,65 @@ const CompanyTable = ({ companies, refresh }) => {
   };
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm bg-white">
-      <table className="w-full text-sm text-left text-gray-700 border-separate border-spacing-y-2">
-        <thead className="bg-gray-100 text-gray-700 text-sm">
+    <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 backdrop-blur-md bg-white/60">
+      <table className="w-full text-sm text-left text-gray-700">
+      <thead class="bg-gradient-to-r from-slate-700 to-slate-900 text-white uppercase tracking-wider">
           <tr>
-            <th className="p-3">Name</th>
-            <th className="p-3">Domain</th>
-            <th className="p-3">Upload</th>
-            <th className="p-3">Del Chatbot</th>
-            <th className="p-3">Del Company</th>
+            <th className="p-4">Name</th>
+            <th className="p-4">Domain</th>
+            <th className="p-4">Upload</th>
+            <th className="p-4">Del Chatbot</th>
+            <th className="p-4">Del Company</th>
           </tr>
         </thead>
         <tbody>
-          {companies.map((company) => (
+          {companies.map((company, index) => (
             <tr
               key={company._id}
-              className="bg-white border border-gray-200 rounded-md shadow hover:shadow-md transition"
+              onClick={() => onEditCompany(company)}
+              className={`transition-all duration-200 hover:shadow-md hover:bg-blue-50/90 cursor-pointer ${
+                index % 2 === 0 ? "bg-white/70" : "bg-gray-50/70"
+              }`}
             >
-              <td className="p-3">{company.name}</td>
-              <td className="p-3">{company.url}</td>
-
-              <td className="p-3">
+              <td className="p-4 font-medium">{company.name}</td>
+              <td className="p-4 text-blue-600 underline">{company.url}</td>
+              <td className="p-4" onClick={(e) => e.stopPropagation()}>
                 {company.chatbots?.length > 0 ? (
                   <UploadContextModal chatbotId={company.chatbots[0]._id} />
                 ) : (
-                  <span className="text-gray-400">-</span>
+                  <span className="text-gray-400">—</span>
                 )}
               </td>
-
-              <td className="p-3">
+              <td className="p-4">
                 {Array.isArray(company.chatbots) &&
                 company.chatbots.length > 0 ? (
                   <button
-                    onClick={() => handleDeleteChatbot(company.chatbots[0]._id)}
-                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded font-medium"
+                    onClick={(e) =>
+                      handleDeleteChatbot(e, company.chatbots[0]._id)
+                    }
+                    className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-red-500 to-red-600 text-white shadow hover:scale-105 transition-transform"
                   >
-                    Delete Chatbot
+                    Delete
                   </button>
                 ) : (
                   <button
-                    onClick={() => {
-                      setSelectedCompany(company);
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedCompanyForAdd(company);
                       setShowAddModal(true);
                     }}
-                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-medium"
+                    className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-green-500 to-green-600 text-white shadow hover:scale-105 transition-transform"
                   >
-                    Create Chatbot
+                    Create
                   </button>
                 )}
               </td>
-
-              <td className="p-3">
+              <td className="p-4">
                 <button
-                  onClick={() => handleDeleteCompany(company._id)}
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded font-medium"
+                  onClick={(e) => handleDeleteCompany(e, company._id)}
+                  className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow hover:scale-105 transition-transform"
                 >
-                  Delete Company
+                  Delete
                 </button>
               </td>
             </tr>
@@ -137,25 +140,14 @@ const CompanyTable = ({ companies, refresh }) => {
         </tbody>
       </table>
 
-      {showAddModal && selectedCompany && (
+      {showAddModal && selectedCompanyForAdd && (
         <AddChatbotModal
-          company={selectedCompany}
+          company={selectedCompanyForAdd}
           onClose={() => {
-            setSelectedCompany(null);
+            setSelectedCompanyForAdd(null);
             setShowAddModal(false);
           }}
           onCreate={handleCreateChatbot}
-        />
-      )}
-
-      {showCompanyModal && selectedCompany && (
-        <CompanyModal
-          company={selectedCompany}
-          onClose={() => {
-            setSelectedCompany(null);
-            setShowCompanyModal(false);
-          }}
-          refresh={refresh}
         />
       )}
     </div>

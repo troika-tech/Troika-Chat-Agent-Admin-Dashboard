@@ -1,7 +1,10 @@
+// src/pages/CompaniesPage.js
+
 import { useState, useEffect } from "react";
 import api from "../services/api";
 import CompanyTable from "../components/CompanyTable";
 import AddCompanyModal from "../components/AddCompanyModal";
+import CompanyModal from "../components/CompanyModal"; // The "Edit" modal
 import ClipLoader from "react-spinners/ClipLoader";
 
 const CompaniesPage = () => {
@@ -10,13 +13,15 @@ const CompaniesPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // State to manage the company being edited
+  const [editingCompany, setEditingCompany] = useState(null);
+
   const fetchCompanies = async () => {
     try {
       const token = localStorage.getItem("adminToken");
       const res = await api.get("/company/all", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       setCompanies(res.data.companies);
     } catch (err) {
       console.error("Failed to fetch companies:", err);
@@ -41,36 +46,48 @@ const CompaniesPage = () => {
     );
   }
 
-  if (!companies) {
-    return <p className="text-red-500">Failed to load companies.</p>;
-  }
-
   return (
-    <div className="p-4 bg-white rounded-xl shadow-md">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-        <input
-          className="w-full md:max-w-sm px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
-          placeholder="Search companies..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+    // Use a React Fragment to render the modal as a sibling to the main content
+    <>
+      <div className="p-4 bg-white rounded-xl shadow-md">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+          <input
+            className="w-full md:max-w-sm px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+            placeholder="Search companies..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-medium transition"
+          >
+            + Add Company
+          </button>
+        </div>
+
+        <CompanyTable
+          companies={filtered}
+          refresh={fetchCompanies}
+          onEditCompany={setEditingCompany} // Pass the function to open the edit modal
         />
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-medium transition"
-        >
-          + Add Company
-        </button>
       </div>
 
-      <CompanyTable companies={filtered} refresh={fetchCompanies} />
-
+      {/* RENDER MODALS AT THE TOP LEVEL */}
       {showAddModal && (
         <AddCompanyModal
           onClose={() => setShowAddModal(false)}
           onSuccess={fetchCompanies}
         />
       )}
-    </div>
+
+      {editingCompany && (
+        <CompanyModal
+          company={editingCompany}
+          onClose={() => setEditingCompany(null)}
+          refresh={fetchCompanies}
+        />
+      )}
+    </>
   );
 };
 
