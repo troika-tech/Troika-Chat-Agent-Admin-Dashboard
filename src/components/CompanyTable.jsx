@@ -1,12 +1,53 @@
-// src/components/CompanyTable.js
-
 import { useState } from "react";
 import UploadContextModal from "./UploadContextModal";
 import AddChatbotModal from "./AddChatbotModal";
 import api from "../services/api";
 import { toast } from "react-toastify";
 
-const CompanyTable = ({ companies, refresh, onEditCompany }) => {
+// --- ADDED: Skeleton Loader Component ---
+const SkeletonRow = () => (
+  <tr className="bg-white/70">
+    <td className="p-4">
+      <div className="h-4 bg-gray-300 rounded animate-pulse"></div>
+    </td>
+    <td className="p-4">
+      <div className="h-4 bg-gray-300 rounded animate-pulse"></div>
+    </td>
+    <td className="p-4">
+      <div className="h-8 w-24 bg-gray-300 rounded-lg animate-pulse"></div>
+    </td>
+    <td className="p-4">
+      <div className="h-8 w-20 bg-gray-300 rounded-lg animate-pulse"></div>
+    </td>
+    <td className="p-4">
+      <div className="h-8 w-20 bg-gray-300 rounded-lg animate-pulse"></div>
+    </td>
+  </tr>
+);
+
+const TableSkeleton = ({ rows = 5 }) => (
+  <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 backdrop-blur-md bg-white/60">
+    <table className="w-full text-sm text-left text-gray-700">
+      <thead className="bg-gradient-to-r from-slate-700 to-slate-900 text-white uppercase tracking-wider">
+        <tr>
+          <th className="p-4">Name</th>
+          <th className="p-4">Domain</th>
+          <th className="p-4">Upload</th>
+          <th className="p-4">Del Chatbot</th>
+          <th className="p-4">Del Company</th>
+        </tr>
+      </thead>
+      <tbody>
+        {Array.from({ length: rows }).map((_, index) => (
+          <SkeletonRow key={index} />
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+// --- END: Skeleton Loader Component ---
+
+const CompanyTable = ({ companies, refresh, onEditCompany, loading }) => { // 👈 ADDED loading prop
   const [selectedCompanyForAdd, setSelectedCompanyForAdd] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -73,10 +114,15 @@ const CompanyTable = ({ companies, refresh, onEditCompany }) => {
     }
   };
 
+  // 👇 ADDED: Conditional rendering for the skeleton loader
+  if (loading) {
+    return <TableSkeleton rows={5} />;
+  }
+
   return (
     <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 backdrop-blur-md bg-white/60">
       <table className="w-full text-sm text-left text-gray-700">
-      <thead class="bg-gradient-to-r from-slate-700 to-slate-900 text-white uppercase tracking-wider">
+        <thead className="bg-gradient-to-r from-slate-700 to-slate-900 text-white uppercase tracking-wider">
           <tr>
             <th className="p-4">Name</th>
             <th className="p-4">Domain</th>
