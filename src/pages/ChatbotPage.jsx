@@ -17,6 +17,9 @@ import {
   Pencil,
   Check,
   Save,
+  Brain,
+  Loader2,
+  Undo2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext"; // 👈 1. Import useAuth
 
@@ -80,6 +83,7 @@ const MODAL_TYPES = {
   NONE: null,
   MESSAGE_HISTORY: "message_history",
   CONFIG: "config",
+  PERSONA: "persona",
 };
 
 const ManageChatbotsPage = () => {
@@ -94,6 +98,12 @@ const ManageChatbotsPage = () => {
   const [availablePlans, setAvailablePlans] = useState([]);
   const [editingTokenLimitFor, setEditingTokenLimitFor] = useState(null);
   const [newTokenLimit, setNewTokenLimit] = useState("");
+
+  // Persona modal state
+  const [personaLoading, setPersonaLoading] = useState(false);
+  const [personaSaving, setPersonaSaving] = useState(false);
+  const [personaDraft, setPersonaDraft] = useState("");
+  const [personaOriginal, setPersonaOriginal] = useState("");
 
   const { token } = useAuth(); // 👈 2. Get token from context
 
@@ -195,6 +205,57 @@ const ManageChatbotsPage = () => {
       setIsDownloading(false);
     }
   };
+
+  // PERSONA: open modal + fetch
+  const openPersonaModal = async (chatbot) => {
+    setSelected(chatbot);
+    setShowModal(MODAL_TYPES.PERSONA);
+    setPersonaLoading(true);
+    setPersonaDraft("");
+    setPersonaOriginal("");
+    try {
+      // 👉 API endpoint here
+      const res = await api.get(`/chatbot/${chatbot._id}/persona`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const persona = res?.data?.persona ?? "";
+      setPersonaDraft(persona);
+      setPersonaOriginal(persona);
+    } catch (err) {
+      console.error("Failed to fetch persona:", err);
+      toast.error("Couldn't fetch persona.");
+    } finally {
+      setPersonaLoading(false);
+    }
+  };
+
+  // PERSONA: save
+  const savePersona = async () => {
+    if (!selected?._id) return;
+    setPersonaSaving(true);
+    try {
+      // 👉 API endpoint here
+      await api.put(
+        `/chatbot/${selected._id}/persona`,
+        { persona: personaDraft },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setPersonaOriginal(personaDraft);
+      toast(<CustomSuccessToast text="Persona saved!" />);
+    } catch (err) {
+      console.error("Failed to save persona:", err);
+      toast.error("Saving persona failed.");
+    } finally {
+      setPersonaSaving(false);
+    }
+  };
+
+  const closeAnyModal = () => {
+    setShowModal(MODAL_TYPES.NONE);
+    setSelected(null);
+  };
+
+  const resetPersonaToFetched = () => setPersonaDraft(personaOriginal);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
@@ -441,6 +502,12 @@ const ManageChatbotsPage = () => {
                       >
                         <Settings size={16} /> Config
                       </ActionButton>
+                      <ActionButton
+                        color="blue"
+                        onClick={() => openPersonaModal(cb)}
+                      >
+                        <Brain size={16} /> Persona
+                      </ActionButton>
                     </div>
                   </div>
                 );
@@ -465,22 +532,31 @@ const ManageChatbotsPage = () => {
       {showModal === MODAL_TYPES.MESSAGE_HISTORY && selected && (
         <Modal
           title={`🧾 Message History – ${selected.name}`}
-          onClose={() => {
-            setShowModal(MODAL_TYPES.NONE);
-            setSelected(null);
-          }}
+          onClose={closeAnyModal}
         >
           <MessageHistory chatbotId={selected._id} />
         </Modal>
       )}
 
       {showModal === MODAL_TYPES.CONFIG && selected && (
-        <EditClientConfigModal
+        <EditClientConfigModal chatbot={selected} onClose={closeAnyModal} />
+      )}
+
+      {showModal === MODAL_TYPES.PERSONA && selected && (
+        <PersonaModal
           chatbot={selected}
-          onClose={() => {
-            setShowModal(MODAL_TYPES.NONE);
-            setSelected(null);
+          loading={personaLoading}
+          saving={personaSaving}
+          value={personaDraft}
+          onChange={setPersonaDraft}
+          onCopy={() => {
+            navigator.clipboard.writeText(personaDraft || "");
+            toast(<CustomSuccessToast text="Persona copied" />);
           }}
+          onReset={resetPersonaToFetched}
+          onSave={savePersona}
+          onClose={closeAnyModal}
+          hasChanges={personaDraft !== personaOriginal}
         />
       )}
     </div>
@@ -596,5 +672,101 @@ const RenewModal = ({
     </div>
   </div>
 );
+
+// --- Persona Modal ---
+const PersonaModal = ({
+  chatbot,
+  loading,
+  saving,
+  value,
+  onChange,
+  onCopy,
+  onReset,
+  onSave,
+  onClose,
+  hasChanges,
+}) => {
+  const count = value?.length ?? 0;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-0 rounded-xl w-full max-w-4xl relative shadow-xl border border-gray-200/70 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div className="flex items-center gap-3">
+            <Brain className="text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-800">
+              Set Persona — {chatbot?.name}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-800 text-2xl"
+            aria-label="Close"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {loading ? (
+            <div className="flex items-center gap-2 text-gray-600">
+              <Loader2 className="animate-spin" />
+              <span>Loading persona…</span>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  Tip: Write clear instructions, tone, do/don’t rules, and any
+                  company/product knowledge that must always be respected.
+                </p>
+                <span className="text-xs text-gray-500">{count} chars</span>
+              </div>
+
+              <textarea
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder="Describe this chatbot's persona, tone, goals, allowed topics, and rules…"
+                className="w-full h-[50vh] resize-y leading-6 p-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 font-mono text-sm bg-white"
+              />
+
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                <button
+                  onClick={onCopy}
+                  className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Copy size={16} /> Copy
+                </button>
+                <button
+                  onClick={onReset}
+                  disabled={!hasChanges}
+                  className={`px-3 py-2 rounded-lg border flex items-center gap-2 ${
+                    hasChanges
+                      ? "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                      : "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed"
+                  }`}
+                >
+                  <Undo2 size={16} /> Reset
+                </button>
+                <button
+                  onClick={onSave}
+                  disabled={saving}
+                  className={`px-4 py-2 rounded-lg font-semibold flex items-center gap-2 ${
+                    saving
+                      ? "bg-blue-400 text-white cursor-wait"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                  }`}
+                >
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  {saving ? "Saving…" : "Save Persona"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default ManageChatbotsPage;
