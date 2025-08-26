@@ -455,11 +455,11 @@ const ManageChatbotsPage = () => {
 
                     <div className="flex items-center justify-between bg-slate-100 p-3 rounded-lg border border-slate-200 mb-8">
                       <code className="text-xs text-gray-600 break-all mr-4">
-                        {`<script src="https://api.0804.in/chatbot-loader/loaders.js" chatbot-id="${cb._id}" defer></script>`}
+                        {`<script src="https://api.0804.in/chatbot-loader/troika-loader.js" chatbot-id="${cb._id}" defer></script>`}
                       </code>
                       <button
                         onClick={() => {
-                          const script = `<script src="https://api.0804.in/chatbot-loader/loaders.js" chatbot-id="${cb._id}" defer></script>`;
+                          const script = `<script src="https://api.0804.in/chatbot-loader/troika-loader" chatbot-id="${cb._id}" defer></script>`;
                           navigator.clipboard.writeText(script);
                           toast(<CustomSuccessToast text="Embed code copied" />);
                         }}
