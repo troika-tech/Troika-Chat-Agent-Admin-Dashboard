@@ -1,7 +1,7 @@
 import React from "react";
 import { LayoutDashboard, MessageSquare, LogOut, Inbox } from "lucide-react"; // ✅ Add Inbox icon
 import { useLocation } from "react-router-dom";
-import logo from "../../public/dashboard-logo.png";
+import logo from "../assets/dashboard-logo.svg";
 
 
 export default function Sidebar({ chatbotId }) {
