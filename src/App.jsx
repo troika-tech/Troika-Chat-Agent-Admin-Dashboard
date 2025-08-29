@@ -48,7 +48,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="customize" element={<CustomizePage />} />
+          <Route path="customize/:chatbotId" element={<CustomizePage />} />
         </Route>
 
         {/* User routes */}

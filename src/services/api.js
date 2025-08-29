@@ -2,7 +2,7 @@ import axios from "axios";
 
 //this is test comment
 
-
+  
 const api = axios.create({
   baseURL: "https://api.0804.in/api",
   // baseURL: "http://localhost:5000/api",
@@ -24,6 +24,19 @@ export const fetchClientConfig = (chatbotId) => {
 
 export const updateClientConfig = (chatbotId, config) => {
   return api.put(`/chatbot/${chatbotId}/config`, config);
+};
+
+// Customization API endpoints
+export const fetchCustomization = (chatbotId) => {
+  return api.get(`/customizations/${chatbotId}`);
+};
+
+export const updateCustomization = (chatbotId, customization) => {
+  return api.put(`/customizations/${chatbotId}`, customization);
+};
+
+export const resetCustomization = (chatbotId) => {
+  return api.post(`/customizations/${chatbotId}/reset`);
 };
 
 export default api;

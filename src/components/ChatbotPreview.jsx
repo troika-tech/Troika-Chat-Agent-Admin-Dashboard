@@ -4,6 +4,7 @@ import React from "react";
 import styled, { createGlobalStyle } from "styled-components";
 import { IoSend } from "react-icons/io5";
 import { FiMic } from "react-icons/fi";
+import { Volume2, VolumeX } from "lucide-react";
 import * as FaIcons from "react-icons/fa";
 
 // --- FIXED: This component now dynamically injects ONLY the selected font ---
@@ -29,11 +30,22 @@ const familyToWeights = (family) => {
   return defaultWeights;
 };
 
-const DynamicFontInjector = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=${(p) =>
-    p.fontFamily.replace(/ /g, "+")}:${(p) =>
-  familyToWeights(p.fontFamily)}&display=swap');
-`;
+const DynamicFontInjector = ({ fontFamily }) => {
+  React.useEffect(() => {
+    if (fontFamily && fontFamily !== 'Arial') {
+      const link = document.createElement('link');
+      link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/ /g, "+")}:${familyToWeights(fontFamily)}&display=swap`;
+      link.rel = 'stylesheet';
+      document.head.appendChild(link);
+      
+      return () => {
+        document.head.removeChild(link);
+      };
+    }
+  }, [fontFamily]);
+  
+  return null;
+};
 
 const Chatbox = styled.div`
   width: 100%;
@@ -56,7 +68,7 @@ const Header = styled.div`
   justify-content: space-between;
   padding: 0.75rem 1rem;
   background: ${(props) =>
-    props.bgColor || "linear-gradient(90deg, #e53988, #5b37eb)"};
+    props.$bgColor || "linear-gradient(90deg, #e53988, #5b37eb)"};
   color: #ffffff;
   flex-shrink: 0;
 `;
@@ -64,6 +76,12 @@ const Header = styled.div`
 const HeaderLeft = styled.div`
   display: flex;
   align-items: center;
+`;
+
+const HeaderRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 `;
 
 const Avatar = styled.img`
@@ -91,6 +109,29 @@ const BotSubtitle = styled.div`
   line-height: 1.2;
 `;
 
+const MuteToggle = styled.button`
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  transition: all 0.2s ease-in-out;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+`;
+
 const CloseButton = styled.button`
   background: none;
   border: none;
@@ -112,8 +153,14 @@ const ChatContainer = styled.div`
   flex-direction: column;
   padding: 1.25rem;
   overflow-y: auto;
-  background-image: ${(props) =>
-    props.bgImage ? `url(${props.bgImage})` : "none"};
+  background: ${(props) => {
+    if (props.$bgImage) {
+      return `url(${props.$bgImage})`;
+    } else if (props.$bgColor) {
+      return props.$bgColor;
+    }
+    return "#ffffff";
+  }};
   background-size: cover;
   background-position: center;
 `;
@@ -168,7 +215,7 @@ const SuggestionButton = styled.button`
   }
 `;
 const IconWrapper = styled.div`
-  background: ${(props) => props.bgColor || "#6366f1"};
+  background: ${(props) => props.$bgColor || "#6366f1"};
   border-radius: 50%;
   width: 32px;
   height: 32px;
@@ -201,7 +248,7 @@ const ChatInput = styled.input`
   }
 `;
 const SendButton = styled.button`
-  background: ${(props) => props.bgColor || "#3b8276"};
+  background: ${(props) => props.$bgColor || "#3b8276"};
   border: none;
   border-radius: 50%;
   width: 44px;
@@ -210,7 +257,7 @@ const SendButton = styled.button`
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: ${(props) => props.textColor || "#FFFFFF"};
+  color: ${(props) => props.$textColor || "#FFFFFF"};
   flex-shrink: 0;
 `;
 
@@ -222,13 +269,22 @@ const ChatbotPreview = ({
   buttonColor,
   textColor,
   bgImage,
+  bgColor,
   fontFamily,
+  includeSuggestionButton = true,
+  includeAudio = false,
 }) => {
+  const [isMuted, setIsMuted] = React.useState(false);
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+  };
+
   return (
     <>
       <DynamicFontInjector fontFamily={fontFamily} />
       <Chatbox fontFamily={fontFamily}>
-        <Header bgColor={headerColor}>
+        <Header $bgColor={headerColor}>
           <HeaderLeft>
             <Avatar
               src="https://raw.githubusercontent.com/troika-tech/Asset/refs/heads/main/supa-7-aug.png"
@@ -239,48 +295,57 @@ const ChatbotPreview = ({
               <BotSubtitle>{botSubtitle}</BotSubtitle>
             </TitleContainer>
           </HeaderLeft>
-          <CloseButton>&times;</CloseButton>
+          <HeaderRight>
+            {includeAudio && (
+              <MuteToggle onClick={toggleMute} isMuted={isMuted}>
+                {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+              </MuteToggle>
+            )}
+            <CloseButton>&times;</CloseButton>
+          </HeaderRight>
         </Header>
 
-        <ChatContainer bgImage={bgImage}>
+        <ChatContainer $bgImage={bgImage} $bgColor={bgColor}>
           <div style={{ flex: 1 }}>
             <MessageBubble>
               <p>{welcomeMessage}</p>
             </MessageBubble>
           </div>
-          <div>
-            <p
-              style={{ fontSize: "13px", color: "#666", marginBottom: "10px" }}
-            >
-              Or try one of these:
-            </p>
-            <SuggestionsContainer>
-              {suggestions.map((suggestion, index) => {
-                const IconComponent = FaIcons[suggestion.icon];
-                return suggestion.label ? (
-                  <SuggestionButton key={index}>
-                    <IconWrapper bgColor={suggestion.bg}>
-                      {IconComponent ? (
-                        <IconComponent size={16} />
-                      ) : (
-                        <FaIcons.FaQuestionCircle size={16} />
-                      )}
-                    </IconWrapper>
-                    <span className="label-text">{suggestion.label}</span>
-                  </SuggestionButton>
-                ) : null;
-              })}
-            </SuggestionsContainer>
-          </div>
+          {includeSuggestionButton && suggestions.length > 0 && (
+            <div>
+              <p
+                style={{ fontSize: "13px", color: "#666", marginBottom: "10px" }}
+              >
+                Or try one of these:
+              </p>
+              <SuggestionsContainer>
+                {suggestions.map((suggestion, index) => {
+                  const IconComponent = FaIcons[suggestion.icon];
+                  return suggestion.label ? (
+                    <SuggestionButton key={index}>
+                      <IconWrapper $bgColor={suggestion.bg}>
+                        {IconComponent ? (
+                          <IconComponent size={16} />
+                        ) : (
+                          <FaIcons.FaQuestionCircle size={16} />
+                        )}
+                      </IconWrapper>
+                      <span className="label-text">{suggestion.label}</span>
+                    </SuggestionButton>
+                  ) : null;
+                })}
+              </SuggestionsContainer>
+            </div>
+          )}
         </ChatContainer>
 
         <InputContainer>
           <ChatInputWrapper>
             <ChatInput placeholder="Type your message..." disabled />
-            <SendButton bgColor={buttonColor} textColor={textColor}>
+            <SendButton $bgColor={buttonColor} $textColor={textColor}>
               <FiMic size={20} />
             </SendButton>
-            <SendButton bgColor={buttonColor} textColor={textColor}>
+            <SendButton $bgColor={buttonColor} $textColor={textColor}>
               <IoSend size={20} />
             </SendButton>
           </ChatInputWrapper>

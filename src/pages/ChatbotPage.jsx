@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import MessageHistory from "../components/MessageHistory";
 import EditClientConfigModal from "../components/EditClientConfigModal";
@@ -10,6 +11,7 @@ import {
   History,
   RefreshCw,
   Settings,
+  Palette,
   Upload,
   Rocket,
   Building,
@@ -87,6 +89,7 @@ const MODAL_TYPES = {
 };
 
 const ManageChatbotsPage = () => {
+  const navigate = useNavigate();
   const [chatbots, setChatbots] = useState([]);
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
@@ -507,6 +510,12 @@ const ManageChatbotsPage = () => {
                         onClick={() => openPersonaModal(cb)}
                       >
                         <Brain size={16} /> Persona
+                      </ActionButton>
+                      <ActionButton
+                        color="purple"
+                        onClick={() => navigate(`/dashboard/customize/${cb._id}`)}
+                      >
+                        <Palette size={16} /> Customize
                       </ActionButton>
                     </div>
                   </div>
