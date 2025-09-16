@@ -14,6 +14,7 @@ import { ToastContainer } from "react-toastify";
 import MessageHistoryPage from "./pages/MessageHistoryPage";
 import EnquiriesPage from "./pages/EnquiresPage";
 import ClientConfigPage from "./pages/ClientConfigPage";
+import LeadsPage from "./pages/LeadsPage";
 import "./App.css";
 import CustomizePage from "./pages/CustomizePage";
 
@@ -65,6 +66,14 @@ function App() {
           element={
             <ProtectedRoute role="user">
               <MessageHistoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user/leads"
+          element={
+            <ProtectedRoute role="user">
+              <LeadsPage />
             </ProtectedRoute>
           }
         />

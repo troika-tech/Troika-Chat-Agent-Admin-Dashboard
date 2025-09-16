@@ -8,6 +8,7 @@ import {
   Filter,
   X,
   Download,
+  Users,
 } from "lucide-react";
 import api from "../services/api";
 import { toast } from "react-toastify";
@@ -16,6 +17,11 @@ import Layout from "../components/Layout";
 import { saveAs } from "file-saver";
 
 const isEmail = (v = "") => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+// Helper function to detect guest users
+const isGuestUser = (msg) => {
+  return !msg.email && !msg.phone && msg.session_id;
+};
 
 // --- Skeleton Loader Components ---
 const SkeletonRow = () => (
@@ -88,12 +94,13 @@ export default function MessageHistoryPage() {
   const [chatHistory, setChatHistory] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [loadingChat, setLoadingChat] = useState(false);
+  const [showGuests, setShowGuests] = useState(true);
   const token = localStorage.getItem("token");
 
   useEffect(() => {
     fetchMessages();
     fetchEmailsAndPhoneNumbers();
-  }, [page, emailFilter, phoneFilter]);
+  }, [page, emailFilter, phoneFilter, showGuests]);
 
   const fetchMessages = async () => {
     try {
@@ -111,7 +118,15 @@ export default function MessageHistoryPage() {
       const res = await api.get(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setMessages(res.data.messages || []);
+      
+      let filteredMessages = res.data.messages || [];
+      
+      // Filter by guest status
+      if (!showGuests) {
+        filteredMessages = filteredMessages.filter(msg => !isGuestUser(msg));
+      }
+      
+      setMessages(filteredMessages);
       setTotalPages(res.data.totalPages || 1);
     } catch (err) {
       toast.error("Failed to fetch messages");
@@ -139,13 +154,20 @@ export default function MessageHistoryPage() {
     setLoadingChat(true);
 
     try {
-      const key = isEmail(contact) ? "email" : "phone";
-      const value = isEmail(contact) ? contact.toLowerCase() : contact;
+      let url = `/user/messages?limit=1000&page=1`;
+      
+      if (contact.includes('Session:')) {
+        // Handle guest session
+        const sessionId = contact.replace('Session: ', '');
+        url += `&session_id=${encodeURIComponent(sessionId)}`;
+      } else {
+        // Handle regular email/phone
+        const key = isEmail(contact) ? "email" : "phone";
+        const value = isEmail(contact) ? contact.toLowerCase() : contact;
+        url += `&${key}=${encodeURIComponent(value)}`;
+      }
 
-      const res = await api.get(
-        `/user/messages?${key}=${encodeURIComponent(value)}&limit=1000&page=1`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await api.get(url, { headers: { Authorization: `Bearer ${token}` } });
 
       const msgs = (res.data?.messages ?? [])
         .slice()
@@ -216,10 +238,22 @@ export default function MessageHistoryPage() {
           View and manage all your message conversations in one place
         </p>
 
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-end mb-4 gap-3">
+          <button
+            onClick={() => setShowGuests(!showGuests)}
+            className={`inline-flex cursor-pointer items-center gap-2 px-4 py-2 rounded-md font-medium focus:outline-none ${
+              showGuests 
+                ? "bg-orange-100 text-orange-800 border border-orange-200" 
+                : "bg-gray-100 text-gray-600 border border-gray-200"
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            {showGuests ? "Hide Guests" : "Show Guests"}
+          </button>
+          
           <button
             onClick={downloadEmailsAndPhoneNumbersCSV}
-            className="inline-flex cursor-pointer mr-4 items-center gap-2 px-4 py-2 rounded-md bg-indigo-50 text-indigo-900 font-medium hover:bg-indigo-100 focus:outline-none"
+            className="inline-flex cursor-pointer items-center gap-2 px-4 py-2 rounded-md bg-indigo-50 text-indigo-900 font-medium hover:bg-indigo-100 focus:outline-none"
           >
             <Download className="w-5 h-5" />
             Download Users Data
@@ -337,7 +371,8 @@ export default function MessageHistoryPage() {
               </thead>
               <tbody className="text-sm divide-y divide-indigo-100">
                 {messages.map((msg, idx) => {
-                  const contact = msg.email || msg.phone; // always present per your schema
+                  const isGuest = isGuestUser(msg);
+                  const contact = msg.email || msg.phone || (isGuest ? `Session: ${msg.session_id}` : 'Unknown');
                   return (
                     <tr
                       key={idx}
@@ -358,12 +393,30 @@ export default function MessageHistoryPage() {
                           })}
                         </span>
                       </td>
-                      <td className="px-6 py-4 font-semibold">{msg.sender}</td>
+                      <td className="px-6 py-4 font-semibold flex items-center gap-2">
+                        {isGuest ? (
+                          <>
+                            <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
+                              Guest
+                            </span>
+                            <span>{msg.sender}</span>
+                          </>
+                        ) : (
+                          msg.sender
+                        )}
+                      </td>
                       <td className="px-6 py-4">{msg.content}</td>
                       <td className="px-6 py-4">
-                        <span className="text-indigo-700 bg-indigo-100 px-2 py-1 rounded-full text-xs font-medium">
-                          {contact}
-                        </span>
+                        {isGuest ? (
+                          <span className="text-orange-700 bg-orange-100 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            Guest Session
+                          </span>
+                        ) : (
+                          <span className="text-indigo-700 bg-indigo-100 px-2 py-1 rounded-full text-xs font-medium">
+                            {contact}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <button
@@ -422,8 +475,14 @@ export default function MessageHistoryPage() {
             <Dialog.Panel className="bg-white w-full max-w-xl rounded-lg shadow-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2 text-lg font-semibold text-gray-800">
-                  <Mail className="text-purple-600 w-5 h-5" />
-                  <span>Chat History: {selectedChat}</span>
+                  {selectedChat?.includes('Session:') ? (
+                    <Users className="text-orange-600 w-5 h-5" />
+                  ) : (
+                    <Mail className="text-purple-600 w-5 h-5" />
+                  )}
+                  <span>
+                    {selectedChat?.includes('Session:') ? 'Guest Session' : 'Chat History'}: {selectedChat}
+                  </span>
                 </div>
                 <div className="flex items-center gap-4">
                   <button

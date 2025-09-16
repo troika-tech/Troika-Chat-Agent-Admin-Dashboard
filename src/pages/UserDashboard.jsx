@@ -3,6 +3,7 @@ import api from "../services/api";
 import { toast } from "react-toastify";
 import SessionModal from "../components/SessionModal";
 import Layout from "../components/Layout";
+import WelcomeCard from "../components/WelcomeCard";
 import {
   Mail,
   Globe,
@@ -245,6 +246,17 @@ const UserDashboard = () => {
   return (
     <Layout chatbotId={company?.chatbot_id}>
       <div className="max-w-6xl ml-64 mx-auto p-6 sm:p-10 space-y-10 font-[Inter,sans-serif]">
+        {/* Welcome Card */}
+        <WelcomeCard 
+          userName={company?.name || "User"}
+          performanceData={{
+            salesIncrease: Math.min(100, Math.max(0, Math.round((usage?.total_messages || 0) / 10))),
+            starSellerProgress: Math.min(100, Math.max(0, Math.round((usage?.unique_users || 0) / 2))),
+            totalMessages: usage?.total_messages || 0,
+            uniqueUsers: usage?.unique_users || 0
+          }}
+        />
+        
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white border-blue-100 bg-gradient-to-br from-blue-50/50 to-white rounded-xl p-6 shadow-sm hover:shadow-md hover:scale-[1.02] transition duration-300">

@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutDashboard, MessageSquare, LogOut, Inbox } from "lucide-react"; // ✅ Add Inbox icon
+import { LayoutDashboard, MessageSquare, LogOut, Inbox, Users } from "lucide-react"; // ✅ Add Inbox and Users icons
 import { useLocation } from "react-router-dom";
 import logo from "../assets/dashboard-logo.svg";
 
@@ -15,6 +15,11 @@ export default function Sidebar({ chatbotId }) {
       name: "Message History",
       icon: <MessageSquare size={18} />,
       path: "/user/message-history",
+    },
+    {
+      name: "Leads", // ✅ New leads menu item
+      icon: <Users size={18} />,
+      path: "/user/leads",
     },
     {
       name: "Enquiries", // ✅ New menu item

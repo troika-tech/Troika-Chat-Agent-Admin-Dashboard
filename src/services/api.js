@@ -1,6 +1,5 @@
 import axios from "axios";
 
-//this is test comment
 
   
 const api = axios.create({
@@ -37,6 +36,45 @@ export const updateCustomization = (chatbotId, customization) => {
 
 export const resetCustomization = (chatbotId) => {
   return api.post(`/customizations/${chatbotId}/reset`);
+};
+
+// Leads API endpoints
+export const fetchLeadsAnalytics = (companyId, days = 30) => {
+  return api.get(`/hybrid-leads/analytics?companyId=${companyId}&days=${days}`);
+};
+
+export const fetchLeadsMetrics = () => {
+  return api.get('/hybrid-leads/metrics');
+};
+
+export const fetchLeadsHealth = () => {
+  return api.get('/hybrid-leads/health');
+};
+
+export const processLeadsBatches = () => {
+  return api.post('/hybrid-leads/process-batches');
+};
+
+export const fetchLeads = (params = {}) => {
+  const queryParams = new URLSearchParams();
+  Object.keys(params).forEach(key => {
+    if (params[key] !== undefined && params[key] !== '') {
+      queryParams.append(key, params[key]);
+    }
+  });
+  return api.get(`/hybrid-leads?${queryParams.toString()}`);
+};
+
+export const exportLeads = (params = {}) => {
+  const queryParams = new URLSearchParams();
+  Object.keys(params).forEach(key => {
+    if (params[key] !== undefined && params[key] !== '') {
+      queryParams.append(key, params[key]);
+    }
+  });
+  return api.get(`/hybrid-leads/export?${queryParams.toString()}`, {
+    responseType: 'blob', // Important for file downloads
+  });
 };
 
 export default api;
