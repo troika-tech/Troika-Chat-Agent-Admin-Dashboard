@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import Layout from "../components/Layout";
-import leadsService from "../services/leadsService";
 import {
   BarChart3,
   Users,
@@ -119,28 +118,20 @@ const LeadsPage = () => {
   const fetchAllData = async (companyId) => {
     setLoading(true);
     try {
-      // Use real API
-      const data = await leadsService.getAllData(companyId, daysFilter, {
-        page: currentPage,
-        limit,
-        search: searchTerm,
-        confidence: confidenceFilter,
+      // TODO: Implement leads API endpoints
+      toast.info("Leads functionality is currently being updated");
+      
+      // Placeholder data
+      setAnalytics({
+        summary: { totalLeads: 0, period: "30 days" },
+        confidenceBreakdown: { high: 0, medium: 0, low: 0 },
+        categoryBreakdown: {},
+        aiAnalysis: { total: 0, legitimate: 0 }
       });
-
-      setAnalytics(data.analytics.data);
-      setMetrics(data.metrics.data);
-      setHealth(data.health.data);
-      
-      // Filter leads based on guest status
-      let filteredLeads = data.leads.data?.leads || [];
-      
-      // Filter by guest status
-      if (!showGuests) {
-        filteredLeads = filteredLeads.filter(lead => !lead.isGuest && (lead.email || lead.phone));
-      }
-      
-      setLeads(filteredLeads);
-      setTotalPages(data.leads.data?.totalPages || 1);
+      setMetrics({});
+      setHealth({});
+      setLeads([]);
+      setTotalPages(1);
     } catch (error) {
       console.error("Error fetching leads data:", error);
       toast.error("Failed to load leads data");
@@ -152,11 +143,8 @@ const LeadsPage = () => {
   const handleProcessBatches = async () => {
     setProcessing(true);
     try {
-      await leadsService.processBatches();
-      toast.success("Batches processed successfully");
-      if (companyId) {
-        await fetchAllData(companyId);
-      }
+      // TODO: Implement process batches API endpoint
+      toast.info("Process batches functionality is currently being updated");
     } catch (error) {
       console.error("Error processing batches:", error);
       toast.error("Failed to process batches");
@@ -173,35 +161,8 @@ const LeadsPage = () => {
 
     setExporting(true);
     try {
-      // Prepare export parameters
-      const exportParams = {
-        companyId: companyId,
-        confidence: confidenceFilter || undefined,
-        startDate: new Date(Date.now() - daysFilter * 24 * 60 * 60 * 1000).toISOString(),
-        endDate: new Date().toISOString(),
-      };
-
-      // Remove undefined values
-      Object.keys(exportParams).forEach(key => {
-        if (exportParams[key] === undefined) {
-          delete exportParams[key];
-        }
-      });
-
-      const response = await leadsService.exportLeads(exportParams);
-      
-      // Create blob and download
-      const blob = new Blob([response.data], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `leads-export-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      toast.success("Leads exported successfully");
+      // TODO: Implement export leads API endpoint
+      toast.info("Export leads functionality is currently being updated");
     } catch (error) {
       console.error("Error exporting leads:", error);
       toast.error("Failed to export leads");
@@ -243,7 +204,7 @@ const LeadsPage = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="max-w-7xl ml-64 mx-auto p-6 sm:p-10 space-y-8">
+        <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-10 space-y-6 md:space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <CardSkeleton />
             <CardSkeleton />
@@ -261,18 +222,18 @@ const LeadsPage = () => {
 
   return (
     <Layout>
-      <div className="max-w-7xl ml-64 mx-auto p-6 sm:p-10 space-y-8">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-10 space-y-6 md:space-y-8">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Leads Dashboard</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Leads Dashboard</h1>
             <p className="text-gray-600 mt-2">Monitor and manage your lead generation</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2 md:gap-3">
             <select
               value={daysFilter}
               onChange={(e) => setDaysFilter(Number(e.target.value))}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 md:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm md:text-base"
             >
               <option value={7}>Last 7 days</option>
               <option value={30}>Last 30 days</option>
@@ -281,18 +242,20 @@ const LeadsPage = () => {
             <button
               onClick={handleExportLeads}
               disabled={exporting}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base"
             >
               <Download className={`w-4 h-4 ${exporting ? "animate-pulse" : ""}`} />
-              {exporting ? "Exporting..." : "Export CSV"}
+              <span className="hidden sm:inline">{exporting ? "Exporting..." : "Export CSV"}</span>
+              <span className="sm:hidden">{exporting ? "..." : "Export"}</span>
             </button>
             <button
               onClick={handleProcessBatches}
               disabled={processing}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base"
             >
               <RefreshCw className={`w-4 h-4 ${processing ? "animate-spin" : ""}`} />
-              Process Batches
+              <span className="hidden sm:inline">Process Batches</span>
+              <span className="sm:hidden">Process</span>
             </button>
           </div>
         </div>

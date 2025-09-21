@@ -7,34 +7,34 @@ import { toast } from "react-toastify";
 // --- ADDED: Skeleton Loader Component ---
 const SkeletonRow = () => (
   <tr className="bg-white/70">
-    <td className="p-4">
+    <td className="p-2 md:p-4">
       <div className="h-4 bg-gray-300 rounded animate-pulse"></div>
     </td>
-    <td className="p-4">
+    <td className="p-2 md:p-4">
       <div className="h-4 bg-gray-300 rounded animate-pulse"></div>
     </td>
-    <td className="p-4">
+    <td className="p-2 md:p-4">
       <div className="h-8 w-24 bg-gray-300 rounded-lg animate-pulse"></div>
     </td>
-    <td className="p-4">
+    <td className="p-2 md:p-4">
       <div className="h-8 w-20 bg-gray-300 rounded-lg animate-pulse"></div>
     </td>
-    <td className="p-4">
+    <td className="p-2 md:p-4">
       <div className="h-8 w-20 bg-gray-300 rounded-lg animate-pulse"></div>
     </td>
   </tr>
 );
 
 const TableSkeleton = ({ rows = 5 }) => (
-  <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 backdrop-blur-md bg-white/60">
-    <table className="w-full text-sm text-left text-gray-700">
+  <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 backdrop-blur-md bg-white/60 table-container hide-scrollbar">
+    <table className="w-full text-xs md:text-sm text-left text-gray-700 min-w-[600px]">
       <thead className="bg-gradient-to-r from-slate-700 to-slate-900 text-white uppercase tracking-wider">
         <tr>
-          <th className="p-4">Name</th>
-          <th className="p-4">Domain</th>
-          <th className="p-4">Upload</th>
-          <th className="p-4">Del Chatbot</th>
-          <th className="p-4">Del Company</th>
+          <th className="p-2 md:p-4">Name</th>
+          <th className="p-2 md:p-4">Domain</th>
+          <th className="p-2 md:p-4">Upload</th>
+          <th className="p-2 md:p-4">Del Chatbot</th>
+          <th className="p-2 md:p-4">Del Company</th>
         </tr>
       </thead>
       <tbody>
@@ -120,15 +120,15 @@ const CompanyTable = ({ companies, refresh, onEditCompany, loading }) => { // ðŸ
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 backdrop-blur-md bg-white/60">
-      <table className="w-full text-sm text-left text-gray-700">
+    <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 backdrop-blur-md bg-white/60 table-container hide-scrollbar">
+      <table className="w-full text-xs md:text-sm text-left text-gray-700 min-w-[600px]">
         <thead className="bg-gradient-to-r from-slate-700 to-slate-900 text-white uppercase tracking-wider">
           <tr>
-            <th className="p-4">Name</th>
-            <th className="p-4">Domain</th>
-            <th className="p-4">Upload</th>
-            <th className="p-4">Del Chatbot</th>
-            <th className="p-4">Del Company</th>
+            <th className="p-2 md:p-4">Name</th>
+            <th className="p-2 md:p-4">Domain</th>
+            <th className="p-2 md:p-4">Upload</th>
+            <th className="p-2 md:p-4">Del Chatbot</th>
+            <th className="p-2 md:p-4">Del Company</th>
           </tr>
         </thead>
         <tbody>
@@ -140,25 +140,26 @@ const CompanyTable = ({ companies, refresh, onEditCompany, loading }) => { // ðŸ
                 index % 2 === 0 ? "bg-white/70" : "bg-gray-50/70"
               }`}
             >
-              <td className="p-4 font-medium">{company.name}</td>
-              <td className="p-4 text-blue-600 underline">{company.url}</td>
-              <td className="p-4" onClick={(e) => e.stopPropagation()}>
+              <td className="p-2 md:p-4 font-medium">{company.name}</td>
+              <td className="p-2 md:p-4 text-blue-600 underline">{company.url}</td>
+              <td className="p-2 md:p-4" onClick={(e) => e.stopPropagation()}>
                 {company.chatbots?.length > 0 ? (
                   <UploadContextModal chatbotId={company.chatbots[0]._id} />
                 ) : (
                   <span className="text-gray-400">â€”</span>
                 )}
               </td>
-              <td className="p-4">
+              <td className="p-2 md:p-4">
                 {Array.isArray(company.chatbots) &&
                 company.chatbots.length > 0 ? (
                   <button
                     onClick={(e) =>
                       handleDeleteChatbot(e, company.chatbots[0]._id)
                     }
-                    className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-red-500 to-red-600 text-white shadow hover:scale-105 transition-transform"
+                    className="px-2 md:px-4 py-1 md:py-1.5 rounded-lg bg-gradient-to-r from-red-500 to-red-600 text-white shadow hover:scale-105 transition-transform text-xs md:text-sm"
                   >
-                    Delete
+                    <span className="hidden sm:inline">Delete</span>
+                    <span className="sm:hidden">Del</span>
                   </button>
                 ) : (
                   <button
@@ -167,18 +168,20 @@ const CompanyTable = ({ companies, refresh, onEditCompany, loading }) => { // ðŸ
                       setSelectedCompanyForAdd(company);
                       setShowAddModal(true);
                     }}
-                    className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-green-500 to-green-600 text-white shadow hover:scale-105 transition-transform"
+                    className="px-2 md:px-4 py-1 md:py-1.5 rounded-lg bg-gradient-to-r from-green-500 to-green-600 text-white shadow hover:scale-105 transition-transform text-xs md:text-sm"
                   >
-                    Create
+                    <span className="hidden sm:inline">Create</span>
+                    <span className="sm:hidden">Add</span>
                   </button>
                 )}
               </td>
-              <td className="p-4">
+              <td className="p-2 md:p-4">
                 <button
                   onClick={(e) => handleDeleteCompany(e, company._id)}
-                  className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow hover:scale-105 transition-transform"
+                  className="px-2 md:px-4 py-1 md:py-1.5 rounded-lg bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow hover:scale-105 transition-transform text-xs md:text-sm"
                 >
-                  Delete
+                  <span className="hidden sm:inline">Delete</span>
+                  <span className="sm:hidden">Del</span>
                 </button>
               </td>
             </tr>

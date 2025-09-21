@@ -4,3 +4,64 @@
 body {
   font-family: 'Amarnath', sans-serif;
 }
+
+/* Desktop-specific improvements */
+@media (min-width: 768px) {
+  /* Better table container for desktop */
+  .table-container {
+    overflow-x: auto;
+    border-radius: 1rem;
+  }
+  
+  /* Enhanced table styling for desktop */
+  .table-container table {
+    min-width: 100%;
+  }
+  
+  /* Better line clamp for desktop */
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+  /* Ensure tables are scrollable on mobile */
+  .table-container {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Improve touch targets */
+  button, a, input, select {
+    min-height: 44px;
+  }
+  
+  /* Better spacing for mobile */
+  .mobile-padding {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Fix dropdown z-index stacking in mobile */
+  .filter-dropdown {
+    position: relative;
+    z-index: 50;
+  }
+  
+  .filter-dropdown:last-child {
+    z-index: 51;
+  }
+  
+  /* Hide scrollbars on mobile for better UX */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

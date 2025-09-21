@@ -12,9 +12,12 @@ import UserDashboard from "./pages/UserDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { ToastContainer } from "react-toastify";
 import MessageHistoryPage from "./pages/MessageHistoryPage";
+import DownloadDataPage from "./pages/DownloadDataPage";
+import DownloadReportPage from "./pages/DownloadReportPage";
 import EnquiriesPage from "./pages/EnquiresPage";
 import ClientConfigPage from "./pages/ClientConfigPage";
 import LeadsPage from "./pages/LeadsPage";
+import ApiTest from "./components/ApiTest";
 import "./App.css";
 import CustomizePage from "./pages/CustomizePage";
 
@@ -26,6 +29,7 @@ function App() {
       <ToastContainer position="top-center" autoClose={3000} />
       <Routes>
         <Route path="/" element={<LoginPage />} />
+        <Route path="/api-test" element={<ApiTest />} />
 
         {/* Admin routes */}
         <Route
@@ -66,6 +70,22 @@ function App() {
           element={
             <ProtectedRoute role="user">
               <MessageHistoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user/download-data"
+          element={
+            <ProtectedRoute role="user">
+              <DownloadDataPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user/download-report"
+          element={
+            <ProtectedRoute role="user">
+              <DownloadReportPage />
             </ProtectedRoute>
           }
         />

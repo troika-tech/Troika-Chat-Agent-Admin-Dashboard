@@ -91,23 +91,23 @@ const OverviewPage = () => {
 
   return (
     <div className="w-full">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">
+      <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-gray-800">
         Overview
       </h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
         {statData.map((stat, idx) => (
           <div
             key={idx}
-            className="bg-white p-6 rounded-xl border border-gray-100 shadow-md hover:shadow-lg hover:-translate-y-1 transform transition-all duration-300"
+            className="bg-white p-4 md:p-6 rounded-xl border border-gray-100 shadow-md hover:shadow-lg hover:-translate-y-1 transform transition-all duration-300"
           >
             <div
-              className={`w-14 h-14 rounded-lg bg-gradient-to-r ${stat.iconBg} flex items-center justify-center shadow-md mb-4`}
+              className={`w-12 h-12 md:w-14 md:h-14 rounded-lg bg-gradient-to-r ${stat.iconBg} flex items-center justify-center shadow-md mb-3 md:mb-4`}
             >
               {stat.icon}
             </div>
-            <p className="text-sm font-medium text-gray-500">{stat.label}</p>
-            <h3 className="text-3xl font-bold text-gray-800 mt-1">
+            <p className="text-xs md:text-sm font-medium text-gray-500">{stat.label}</p>
+            <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mt-1">
               {stat.value}
             </h3>
           </div>

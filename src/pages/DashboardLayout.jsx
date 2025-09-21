@@ -1,11 +1,36 @@
 import Sidebar from "../components/Sidebar";
 import { Outlet } from "react-router-dom";
+import { useState } from "react";
+import { Menu } from "lucide-react";
 
 const DashboardLayout = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleMenuClick = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  const handleSidebarClose = () => {
+    setSidebarOpen(false);
+  };
+
   return (
     <div className="bg-gray-100 min-h-screen text-gray-800">
-      <Sidebar />
-      <main className="ml-64 p-6 bg-white min-h-screen overflow-y-auto">
+      <Sidebar isOpen={sidebarOpen} onClose={handleSidebarClose} />
+      
+      {/* Mobile Header */}
+      <div className="md:hidden bg-white shadow-sm px-4 py-3 flex items-center justify-between">
+        <button
+          onClick={handleMenuClick}
+          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          <Menu size={24} className="text-gray-600" />
+        </button>
+        <h1 className="text-lg font-semibold text-gray-800">Admin Dashboard</h1>
+        <div className="w-10"></div> {/* Spacer for centering */}
+      </div>
+      
+      <main className="md:ml-64 p-4 md:p-6 bg-white min-h-screen overflow-y-auto">
         <Outlet />
       </main>
     </div>

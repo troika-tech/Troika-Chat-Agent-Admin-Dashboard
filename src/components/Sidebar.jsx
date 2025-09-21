@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // Import the useAuth hook
+import { useState } from "react";
 import {
   LayoutDashboard,
   Building2,
@@ -7,9 +8,11 @@ import {
   LogOut,
   Settings,
   ShieldCheck,
+  Menu,
+  X,
 } from "lucide-react";
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
   // Use the user and logout function from the AuthContext
   const { user, logout } = useAuth();
 
@@ -29,27 +32,41 @@ const Sidebar = () => {
       .toUpperCase();
 
   return (
-    <aside className="h-screen fixed w-64 bg-white border-r border-gray-200 p-4 hidden md:flex flex-col justify-between shadow-md">
-      <div>
-        <h2 className="text-2xl font-bold text-blue-600 mb-6 text-center tracking-wide">
-          Supa Agent
-        </h2>
+    <>
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={onClose}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <aside className={`h-screen fixed w-64 bg-white border-r border-gray-200 p-4 flex flex-col justify-between shadow-md z-50 transition-transform duration-300 overflow-hidden ${
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      } md:translate-x-0`}>
+      <div className="flex flex-col h-full">
+        <div className="flex-shrink-0">
+          <h2 className="text-2xl font-bold text-blue-600 mb-6 text-center tracking-wide">
+            Supa Agent
+          </h2>
 
-        {/* --- ADDED: Profile Info Section --- */}
-        {user && (
-          <div className="flex flex-col items-center mb-6 border-b border-gray-200 pb-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-teal-400 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-2 shadow-lg">
-              {getInitials(user.name)}
+          {/* --- ADDED: Profile Info Section --- */}
+          {user && (
+            <div className="flex flex-col items-center mb-6 border-b border-gray-200 pb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-teal-400 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-2 shadow-lg">
+                {getInitials(user.name)}
+              </div>
+              <p className="font-semibold text-gray-800 text-md">{user.name}</p>
+              <p className="text-xs text-white bg-slate-700 rounded-full px-3 py-1 mt-1 font-medium tracking-wide">
+                {user.isSuperAdmin ? "Super Admin" : "Admin"}
+              </p>
             </div>
-            <p className="font-semibold text-gray-800 text-md">{user.name}</p>
-            <p className="text-xs text-white bg-slate-700 rounded-full px-3 py-1 mt-1 font-medium tracking-wide">
-              {user.isSuperAdmin ? "Super Admin" : "Admin"}
-            </p>
-          </div>
-        )}
-        {/* --- END: Profile Info Section --- */}
+          )}
+          {/* --- END: Profile Info Section --- */}
+        </div>
 
-        <nav className="space-y-2">
+        <nav className="space-y-2 overflow-y-auto flex-1 min-h-0">
           <NavLink to="/dashboard/overview" className={navItemClass}>
             <LayoutDashboard className="mr-3 h-5 w-5" />
             Overview
@@ -80,14 +97,17 @@ const Sidebar = () => {
         </nav>
       </div>
 
-      <button
-        onClick={logout} // Use the logout function from the context
-        className="flex cursor-pointer items-center px-4 py-2 rounded-lg text-sm font-medium text-red-500 hover:text-white hover:bg-red-500 transition-all"
-      >
-        <LogOut className="mr-3 h-5 w-5" />
-        Logout
-      </button>
-    </aside>
+      <div className="flex-shrink-0">
+        <button
+          onClick={logout} // Use the logout function from the context
+          className="flex cursor-pointer items-center px-4 py-2 rounded-lg text-sm font-medium text-red-500 hover:text-white hover:bg-red-500 transition-all"
+        >
+          <LogOut className="mr-3 h-5 w-5" />
+          Logout
+        </button>
+      </div>
+      </aside>
+    </>
   );
 };
 

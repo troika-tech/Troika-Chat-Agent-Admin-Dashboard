@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext"; // Import the useAuth hook
-import api from "../services/api";
+import { adminLogin } from "../services/api";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -17,7 +17,7 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const res = await api.post("/admin/login", {
+      const res = await adminLogin({
         email,
         password,
       });
