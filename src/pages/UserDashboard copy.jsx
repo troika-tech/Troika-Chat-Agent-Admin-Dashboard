@@ -35,7 +35,7 @@ dayjs.extend(relativeTime);
 const CardSkeleton = () => (
   <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-200/50 animate-pulse relative overflow-hidden group transform-gpu" style={{transformStyle: 'preserve-3d'}}>
     {/* 3D Shimmer Effect */}
-    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 transform-gpu" style={{transform: 'translateZ(5px)'}}></div>
+    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-200/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 transform-gpu" style={{transform: 'translateZ(5px)'}}></div>
     
     {/* 3D Shadow Layer */}
     <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 transform-gpu" style={{transform: 'translateZ(-2px) translateY(4px)'}}></div>
@@ -61,7 +61,7 @@ const CardSkeleton = () => (
 const MessageItemSkeleton = () => (
   <div className="bg-white/90 backdrop-blur-sm border border-gray-200/50 rounded-xl p-6 mb-6 shadow-lg animate-pulse relative overflow-hidden group transform-gpu" style={{transformStyle: 'preserve-3d'}}>
     {/* 3D Shimmer Effect */}
-    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 transform-gpu" style={{transform: 'translateZ(5px)'}}></div>
+    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-200/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 transform-gpu" style={{transform: 'translateZ(5px)'}}></div>
     
     {/* 3D Shadow Layer */}
     <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 transform-gpu" style={{transform: 'translateZ(-2px) translateY(3px)'}}></div>
@@ -105,7 +105,7 @@ const DashboardSkeleton = () => (
       </div>
       <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-gray-200/50 animate-pulse relative overflow-hidden group transform-gpu" style={{transformStyle: 'preserve-3d'}}>
         {/* 3D Shimmer Effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 transform-gpu" style={{transform: 'translateZ(5px)'}}></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-200/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 transform-gpu" style={{transform: 'translateZ(5px)'}}></div>
         {/* 3D Shadow Layer */}
         <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 transform-gpu" style={{transform: 'translateZ(-2px) translateY(6px)'}}></div>
         <div className="relative z-10 transform-gpu group-hover:rotateX(1deg) group-hover:rotateY(1deg) transition-transform duration-1000">

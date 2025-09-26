@@ -33,10 +33,14 @@ const ManageAdminsPage = () => {
 
       console.log("API Response on Frontend:", response.data);
 
-      setAdminList(response.data.admins);
+      // Ensure we always set an array, even if the API response doesn't have admins property
+      const admins = response.data?.data?.admins || response.data?.admins || response.data;
+      setAdminList(Array.isArray(admins) ? admins : []);
     } catch (err) {
       console.error("Error fetching admins:", err);
       toast.error(err.response?.data?.message || "Could not fetch admins.");
+      // Set empty array on error to prevent undefined issues
+      setAdminList([]);
     }
   };
 
@@ -215,7 +219,7 @@ const ManageAdminsPage = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {adminList.map((admin) => (
+                  {Array.isArray(adminList) ? adminList.map((admin) => (
                     <tr
                       key={admin._id}
                       onClick={() => setEditingAdmin(admin)}
@@ -257,7 +261,13 @@ const ManageAdminsPage = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )) : (
+                    <tr>
+                      <td colSpan="4" className="p-4 text-center text-gray-500">
+                        No admins found or data is loading...
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

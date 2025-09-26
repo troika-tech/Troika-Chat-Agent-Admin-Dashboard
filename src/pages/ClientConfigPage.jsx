@@ -28,9 +28,13 @@ export default function ClientConfigPage() {
     const loadChatbots = async () => {
       try {
         const data = await fetchAllChatbots();
-        setChatbots(data.chatbots);
+        // Ensure we always set an array, even if the API response doesn't have chatbots property
+        const chatbots = data?.chatbots || data?.data?.chatbots || data;
+        setChatbots(Array.isArray(chatbots) ? chatbots : []);
       } catch (err) {
         console.error("Error loading chatbots:", err);
+        // Set empty array on error to prevent undefined issues
+        setChatbots([]);
       }
     };
     loadChatbots();
@@ -131,11 +135,11 @@ export default function ClientConfigPage() {
           onChange={(e) => setSelectedChatbot(e.target.value)}
         >
           <option value="">Select a chatbot</option>
-          {chatbots.map((bot) => (
+          {Array.isArray(chatbots) ? chatbots.map((bot) => (
             <option key={bot._id} value={bot._id}>
               {bot.name || bot.company_name} ({bot.company_url})
             </option>
-          ))}
+          )) : null}
         </select>
       </div>
 

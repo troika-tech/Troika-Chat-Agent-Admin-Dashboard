@@ -83,24 +83,24 @@ dayjs.extend(utc);
 
 // --- Enhanced 3D Skeleton Loader Components ---
 const CardSkeleton = () => (
-  <div className="bg-gray-800/90 backdrop-blur-sm rounded-2xl p-4 sm:p-6 shadow-xl border border-gray-700/50 animate-pulse relative overflow-hidden group transform-gpu" style={{transformStyle: 'preserve-3d'}}>
+  <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 sm:p-6 shadow-xl border border-gray-200/50 animate-pulse relative overflow-hidden group transform-gpu" style={{transformStyle: 'preserve-3d'}}>
     {/* 3D Shimmer Effect */}
-    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-600/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 transform-gpu" style={{transform: 'translateZ(5px)'}}></div>
+    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-200/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 transform-gpu" style={{transform: 'translateZ(5px)'}}></div>
     
     {/* 3D Shadow Layer */}
     <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 transform-gpu" style={{transform: 'translateZ(-2px) translateY(4px)'}}></div>
     
     <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8 relative z-10 transform-gpu group-hover:rotateX(1deg) group-hover:rotateY(1deg) transition-transform duration-1000">
-      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-gray-600 to-gray-700 rounded-xl animate-pulse transform-gpu" style={{transform: 'translateZ(10px)'}}></div>
-      <div className="h-4 sm:h-5 bg-gradient-to-r from-gray-600 to-gray-700 rounded-full w-1/2 animate-pulse transform-gpu" style={{transform: 'translateZ(10px)'}}></div>
+      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl animate-pulse transform-gpu" style={{transform: 'translateZ(10px)'}}></div>
+      <div className="h-4 sm:h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full w-1/2 animate-pulse transform-gpu" style={{transform: 'translateZ(10px)'}}></div>
     </div>
     <div className="space-y-4 sm:space-y-6 relative z-10 transform-gpu group-hover:rotateX(-1deg) group-hover:rotateY(-1deg) transition-transform duration-1000">
       {[...Array(3)].map((_, i) => (
         <div key={i} className="flex items-start gap-3 sm:gap-4 animate-pulse transform-gpu" style={{animationDelay: `${i * 0.2}s`, transform: `translateZ(${5 + i * 2}px)`}}>
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-gray-600 to-gray-700 rounded-xl"></div>
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl"></div>
           <div className="flex-1 space-y-2 sm:space-y-3">
-            <div className="h-3 sm:h-4 bg-gradient-to-r from-gray-600 to-gray-700 rounded-full w-1/4"></div>
-            <div className="h-4 sm:h-5 bg-gradient-to-r from-gray-600 to-gray-700 rounded-full w-3/4"></div>
+            <div className="h-3 sm:h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full w-1/4"></div>
+            <div className="h-4 sm:h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full w-3/4"></div>
           </div>
         </div>
       ))}
@@ -109,36 +109,36 @@ const CardSkeleton = () => (
 );
 
 const MessageItemSkeleton = () => (
-  <div className="bg-gray-800/90 backdrop-blur-sm border border-gray-700/50 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg animate-pulse relative overflow-hidden group transform-gpu" style={{transformStyle: 'preserve-3d'}}>
+  <div className="bg-white/90 backdrop-blur-sm border border-gray-200/50 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg animate-pulse relative overflow-hidden group transform-gpu" style={{transformStyle: 'preserve-3d'}}>
     {/* 3D Shimmer Effect */}
-    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-600/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 transform-gpu" style={{transform: 'translateZ(5px)'}}></div>
+    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-200/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 transform-gpu" style={{transform: 'translateZ(5px)'}}></div>
     
     {/* 3D Shadow Layer */}
     <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 transform-gpu" style={{transform: 'translateZ(-2px) translateY(3px)'}}></div>
     
     <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4 relative z-10 transform-gpu group-hover:rotateX(1deg) group-hover:rotateY(1deg) transition-transform duration-1000">
-      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-gray-600 to-gray-700 rounded-full animate-pulse transform-gpu" style={{transform: 'translateZ(8px)'}}></div>
-      <div className="h-4 sm:h-5 bg-gradient-to-r from-gray-600 to-gray-700 rounded-full w-20 sm:w-24 animate-pulse transform-gpu" style={{transform: 'translateZ(8px)'}}></div>
+      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full animate-pulse transform-gpu" style={{transform: 'translateZ(8px)'}}></div>
+      <div className="h-4 sm:h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full w-20 sm:w-24 animate-pulse transform-gpu" style={{transform: 'translateZ(8px)'}}></div>
     </div>
     <div className="space-y-2 sm:space-y-3 relative z-10 transform-gpu group-hover:rotateX(-1deg) group-hover:rotateY(-1deg) transition-transform duration-1000">
-      <div className="h-3 sm:h-4 bg-gradient-to-r from-gray-600 to-gray-700 rounded-full w-full animate-pulse transform-gpu" style={{transform: 'translateZ(6px)'}}></div>
-      <div className="h-3 sm:h-4 bg-gradient-to-r from-gray-600 to-gray-700 rounded-full w-5/6 animate-pulse transform-gpu" style={{transform: 'translateZ(6px)'}}></div>
+      <div className="h-3 sm:h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full w-full animate-pulse transform-gpu" style={{transform: 'translateZ(6px)'}}></div>
+      <div className="h-3 sm:h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full w-5/6 animate-pulse transform-gpu" style={{transform: 'translateZ(6px)'}}></div>
     </div>
   </div>
 );
 
 const DashboardSkeleton = () => (
-  <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden perspective-1000 font-['Exo_2',sans-serif]">
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative overflow-hidden perspective-1000 font-['Exo_2',sans-serif]">
     {/* 3D Animated Background Elements */}
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-900/40 to-indigo-900/40 rounded-full blur-3xl animate-pulse transform-gpu" style={{transform: 'translateZ(0) rotateX(15deg) rotateY(25deg)'}}></div>
-      <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-purple-900/40 to-pink-900/40 rounded-full blur-3xl animate-pulse transform-gpu" style={{animationDelay: '1s', transform: 'translateZ(0) rotateX(-10deg) rotateY(-20deg)'}}></div>
-      <div className="absolute top-20 left-1/4 w-32 h-32 bg-gradient-to-br from-emerald-900/20 to-teal-900/20 rounded-full blur-2xl animate-bounce transform-gpu" style={{animationDuration: '3s', transform: 'translateZ(50px) rotateX(20deg) rotateY(30deg)'}}></div>
-      <div className="absolute bottom-20 right-1/4 w-40 h-40 bg-gradient-to-br from-rose-900/20 to-pink-900/20 rounded-full blur-2xl animate-bounce transform-gpu" style={{animationDuration: '4s', animationDelay: '1s', transform: 'translateZ(30px) rotateX(-15deg) rotateY(-25deg)'}}></div>
+      <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-200/40 to-indigo-200/40 rounded-full blur-3xl animate-pulse transform-gpu" style={{transform: 'translateZ(0) rotateX(15deg) rotateY(25deg)'}}></div>
+      <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-purple-200/40 to-pink-200/40 rounded-full blur-3xl animate-pulse transform-gpu" style={{animationDelay: '1s', transform: 'translateZ(0) rotateX(-10deg) rotateY(-20deg)'}}></div>
+      <div className="absolute top-20 left-1/4 w-32 h-32 bg-gradient-to-br from-emerald-200/20 to-teal-200/20 rounded-full blur-2xl animate-bounce transform-gpu" style={{animationDuration: '3s', transform: 'translateZ(50px) rotateX(20deg) rotateY(30deg)'}}></div>
+      <div className="absolute bottom-20 right-1/4 w-40 h-40 bg-gradient-to-br from-rose-200/20 to-pink-200/20 rounded-full blur-2xl animate-bounce transform-gpu" style={{animationDuration: '4s', animationDelay: '1s', transform: 'translateZ(30px) rotateX(-15deg) rotateY(-25deg)'}}></div>
       
       {/* 3D Geometric Shapes */}
-      <div className="absolute top-1/3 right-1/3 w-24 h-24 bg-gradient-to-br from-yellow-900/20 to-orange-900/20 rounded-lg blur-xl animate-spin transform-gpu" style={{animationDuration: '8s', transform: 'translateZ(100px) rotateX(45deg) rotateY(45deg)'}}></div>
-      <div className="absolute bottom-1/3 left-1/3 w-20 h-20 bg-gradient-to-br from-violet-900/20 to-purple-900/20 rounded-lg blur-xl animate-spin transform-gpu" style={{animationDuration: '6s', animationDirection: 'reverse', transform: 'translateZ(80px) rotateX(-30deg) rotateY(60deg)'}}></div>
+      <div className="absolute top-1/3 right-1/3 w-24 h-24 bg-gradient-to-br from-yellow-200/20 to-orange-200/20 rounded-lg blur-xl animate-spin transform-gpu" style={{animationDuration: '8s', transform: 'translateZ(100px) rotateX(45deg) rotateY(45deg)'}}></div>
+      <div className="absolute bottom-1/3 left-1/3 w-20 h-20 bg-gradient-to-br from-violet-200/20 to-purple-200/20 rounded-lg blur-xl animate-spin transform-gpu" style={{animationDuration: '6s', animationDirection: 'reverse', transform: 'translateZ(80px) rotateX(-30deg) rotateY(60deg)'}}></div>
     </div>
     
     <div className="relative max-w-7xl mx-auto p-4 sm:p-6 lg:p-10 space-y-6 sm:space-y-8 lg:space-y-12 transform-gpu">
@@ -153,13 +153,13 @@ const DashboardSkeleton = () => (
           <CardSkeleton />
         </div>
       </div>
-      <div className="bg-gray-800/90 backdrop-blur-sm rounded-2xl p-4 sm:p-6 lg:p-8 shadow-xl border border-gray-700/50 animate-pulse relative overflow-hidden group transform-gpu" style={{transformStyle: 'preserve-3d'}}>
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 sm:p-6 lg:p-8 shadow-xl border border-gray-200/50 animate-pulse relative overflow-hidden group transform-gpu" style={{transformStyle: 'preserve-3d'}}>
         {/* 3D Shimmer Effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-600/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 transform-gpu" style={{transform: 'translateZ(5px)'}}></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-200/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 transform-gpu" style={{transform: 'translateZ(5px)'}}></div>
         {/* 3D Shadow Layer */}
         <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 transform-gpu" style={{transform: 'translateZ(-2px) translateY(6px)'}}></div>
         <div className="relative z-10 transform-gpu group-hover:rotateX(1deg) group-hover:rotateY(1deg) transition-transform duration-1000">
-          <div className="h-6 sm:h-8 bg-gradient-to-r from-gray-600 to-gray-700 rounded-full w-1/3 mb-6 sm:mb-8 animate-pulse transform-gpu" style={{transform: 'translateZ(10px)'}}></div>
+          <div className="h-6 sm:h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full w-1/3 mb-6 sm:mb-8 animate-pulse transform-gpu" style={{transform: 'translateZ(10px)'}}></div>
           <MessageItemSkeleton />
           <MessageItemSkeleton />
           <MessageItemSkeleton />

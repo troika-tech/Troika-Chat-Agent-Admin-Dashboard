@@ -83,7 +83,7 @@ const OverviewPage = () => {
     },
     {
       label: "Monthly Tokens",
-      value: stats.monthlyTokenUsage.toLocaleString(),
+      value: stats.monthlyTokenUsage ? stats.monthlyTokenUsage.toLocaleString() : "0",
       iconBg: "from-pink-500 to-red-500",
       icon: <BarChart3 className="w-7 h-7 text-white" />,
     },

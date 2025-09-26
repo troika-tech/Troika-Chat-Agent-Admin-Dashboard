@@ -5,6 +5,34 @@ import api from "../services/api";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
 
+// Skeleton Loader Components
+const EnquirySkeleton = () => (
+  <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm animate-pulse">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
+      <div className="flex items-center gap-2 mb-2 sm:mb-0">
+        <div className="w-4 h-4 bg-gray-200 rounded"></div>
+        <div className="h-4 bg-gray-200 rounded w-24"></div>
+        <div className="h-4 bg-gray-200 rounded w-16"></div>
+      </div>
+      <div className="h-4 bg-gray-200 rounded w-20"></div>
+    </div>
+    <div className="space-y-2 mb-4">
+      <div className="h-4 bg-gray-200 rounded w-full"></div>
+      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+    </div>
+    <div className="flex items-center gap-4 text-sm text-gray-500">
+      <div className="flex items-center gap-1">
+        <div className="w-4 h-4 bg-gray-200 rounded"></div>
+        <div className="h-3 bg-gray-200 rounded w-20"></div>
+      </div>
+      <div className="flex items-center gap-1">
+        <div className="w-4 h-4 bg-gray-200 rounded"></div>
+        <div className="h-3 bg-gray-200 rounded w-16"></div>
+      </div>
+    </div>
+  </div>
+);
+
 export default function EnquiriesPage() {
   const { user: ctxUser } = useAuth();
   const [queries, setQueries] = useState([]);
@@ -131,7 +159,11 @@ export default function EnquiriesPage() {
 
         {/* Enquiries List */}
         {loading ? (
-          <p className="text-gray-600">Loading enquiries...</p>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <EnquirySkeleton key={i} />
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
           <p className="text-gray-600">No enquiries found.</p>
         ) : (

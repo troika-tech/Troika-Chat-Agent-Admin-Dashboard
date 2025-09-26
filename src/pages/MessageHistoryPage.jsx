@@ -29,30 +29,30 @@ const isGuestUser = (msg) => {
 const SkeletonRow = () => (
   <tr className="animate-pulse">
     <td className="w-20 md:w-32 lg:w-40 px-2 md:px-4 py-3 md:py-4 text-center">
-      <div className="h-3 md:h-4 bg-gray-600 rounded w-16 md:w-20 mx-auto"></div>
-      <div className="h-2 md:h-3 bg-gray-600 rounded w-12 md:w-16 mx-auto mt-1"></div>
+      <div className="h-3 md:h-4 bg-gray-200 rounded w-16 md:w-20 mx-auto"></div>
+      <div className="h-2 md:h-3 bg-gray-200 rounded w-12 md:w-16 mx-auto mt-1"></div>
     </td>
     <td className="w-24 md:w-32 lg:w-40 px-2 md:px-4 py-3 md:py-4 text-center">
-      <div className="h-4 md:h-5 bg-gray-600 rounded-full w-12 md:w-16 mx-auto"></div>
-      <div className="h-2 md:h-3 bg-gray-600 rounded w-8 md:w-12 mx-auto mt-1"></div>
+      <div className="h-4 md:h-5 bg-gray-200 rounded-full w-12 md:w-16 mx-auto"></div>
+      <div className="h-2 md:h-3 bg-gray-200 rounded w-8 md:w-12 mx-auto mt-1"></div>
     </td>
     <td className="px-2 md:px-4 py-3 md:py-4">
-      <div className="h-3 md:h-4 bg-gray-600 rounded w-full"></div>
-      <div className="h-3 md:h-4 bg-gray-600 rounded w-3/4 mt-1"></div>
+      <div className="h-3 md:h-4 bg-gray-200 rounded w-full"></div>
+      <div className="h-3 md:h-4 bg-gray-200 rounded w-3/4 mt-1"></div>
     </td>
     <td className="w-20 md:w-32 lg:w-36 px-2 md:px-4 py-3 md:py-4 text-center">
-      <div className="h-4 md:h-5 bg-gray-600 rounded-full w-12 md:w-16 mx-auto"></div>
+      <div className="h-4 md:h-5 bg-gray-200 rounded-full w-12 md:w-16 mx-auto"></div>
     </td>
     <td className="w-16 md:w-20 lg:w-24 px-2 md:px-4 py-3 md:py-4 text-center">
-      <div className="h-4 w-4 md:h-5 md:w-5 bg-gray-600 rounded-full mx-auto"></div>
+      <div className="h-4 w-4 md:h-5 md:w-5 bg-gray-200 rounded-full mx-auto"></div>
     </td>
   </tr>
 );
 
 const TableSkeleton = ({ rows = 10 }) => (
-  <div className="shadow-md rounded-lg table-container bg-gray-800 rounded-2xl">
-    <table className="w-full text-xs md:text-sm lg:text-base text-left text-gray-300">
-      <thead className="bg-gray-700 text-white uppercase text-xs md:text-sm font-semibold border-b border-gray-600">
+  <div className="shadow-md rounded-lg table-container bg-white rounded-2xl">
+    <table className="w-full text-xs md:text-sm lg:text-base text-left text-gray-700">
+      <thead className="bg-gray-50 text-gray-700 uppercase text-xs md:text-sm font-semibold border-b border-gray-200">
         <tr>
           <th scope="col" className="w-20 md:w-32 lg:w-40 px-2 md:px-4 py-3 md:py-4 text-center">
             <div className="flex items-center justify-center gap-1">
