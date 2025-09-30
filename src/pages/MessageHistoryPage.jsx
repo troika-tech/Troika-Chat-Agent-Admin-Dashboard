@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   Mail,
   Eye,
@@ -11,6 +11,8 @@ import {
   Users,
   Search,
   Calendar,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import api from "../services/api";
 import { toast } from "react-toastify";
@@ -23,6 +25,106 @@ const isEmail = (v = "") => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 // Helper function to detect guest users
 const isGuestUser = (msg) => {
   return !msg.email && !msg.phone && msg.session_id;
+};
+
+// Constants for production-ready configuration
+const CONFIG = {
+  MAX_SESSIONS_TO_CHECK: 50,
+  MAX_CONCURRENT_REQUESTS: 5,
+  REQUEST_DELAY_MS: 100,
+  RETRY_ATTEMPTS: 3,
+  RETRY_DELAY_MS: 1000,
+  CACHE_DURATION_MS: 5 * 60 * 1000, // 5 minutes
+  DEBOUNCE_DELAY_MS: 300,
+};
+
+// Request queue management
+class RequestQueue {
+  constructor(maxConcurrent = CONFIG.MAX_CONCURRENT_REQUESTS) {
+    this.queue = [];
+    this.running = 0;
+    this.maxConcurrent = maxConcurrent;
+  }
+
+  async add(requestFn) {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ requestFn, resolve, reject });
+      this.process();
+    });
+  }
+
+  async process() {
+    if (this.running >= this.maxConcurrent || this.queue.length === 0) {
+      return;
+    }
+
+    this.running++;
+    const { requestFn, resolve, reject } = this.queue.shift();
+
+    try {
+      const result = await requestFn();
+      resolve(result);
+    } catch (error) {
+      reject(error);
+    } finally {
+      this.running--;
+      this.process();
+    }
+  }
+}
+
+// Cache implementation
+class SimpleCache {
+  constructor(duration = CONFIG.CACHE_DURATION_MS) {
+    this.cache = new Map();
+    this.duration = duration;
+  }
+
+  get(key) {
+    const item = this.cache.get(key);
+    if (!item) return null;
+    
+    if (Date.now() - item.timestamp > this.duration) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return item.data;
+  }
+
+  set(key, data) {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+}
+
+// Debounce utility
+const debounce = (func, delay) => {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func.apply(null, args), delay);
+  };
+};
+
+// Retry utility with exponential backoff
+const retryWithBackoff = async (fn, attempts = CONFIG.RETRY_ATTEMPTS) => {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === attempts - 1) throw error;
+      await new Promise(resolve => 
+        setTimeout(resolve, CONFIG.RETRY_DELAY_MS * Math.pow(2, i))
+      );
+    }
+  }
 };
 
 // --- Skeleton Loader Components ---
@@ -89,20 +191,16 @@ const TableSkeleton = ({ rows = 10 }) => (
 // --- End Skeleton Components ---
 
 export default function MessageHistoryPage() {
+  // Core state
   const [messages, setMessages] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1);
+  
+  // Filter states
   const [emailFilter, setEmailFilter] = useState("");
   const [phoneFilter, setPhoneFilter] = useState("");
   const [guestFilter, setGuestFilter] = useState(false);
   const [separateSessionFilter, setSeparateSessionFilter] = useState("");
-  const [page, setPage] = useState(1);
-  const [allEmails, setAllEmails] = useState([]);
-  const [allPhoneNumbers, setAllPhoneNumbers] = useState([]);
-  const [allSessions, setAllSessions] = useState([]);
-  const [selectedChat, setSelectedChat] = useState(null);
-  const [chatHistory, setChatHistory] = useState([]);
-  const [loadingMessages, setLoadingMessages] = useState(true);
-  const [loadingChat, setLoadingChat] = useState(false);
   const [showGuests, setShowGuests] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -110,6 +208,32 @@ export default function MessageHistoryPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [isDateRange, setIsDateRange] = useState(false);
+  
+  // Data states
+  const [allEmails, setAllEmails] = useState([]);
+  const [allPhoneNumbers, setAllPhoneNumbers] = useState([]);
+  const [allSessions, setAllSessions] = useState([]);
+  
+  // Modal states
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [chatHistory, setChatHistory] = useState([]);
+  
+  // Loading states
+  const [loadingMessages, setLoadingMessages] = useState(true);
+  const [loadingChat, setLoadingChat] = useState(false);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [loadingEmails, setLoadingEmails] = useState(false);
+  
+  // Error states
+  const [error, setError] = useState(null);
+  const [sessionError, setSessionError] = useState(null);
+  
+  // Refs for cleanup and optimization
+  const abortControllerRef = useRef(null);
+  const requestQueueRef = useRef(new RequestQueue());
+  const cacheRef = useRef(new SimpleCache());
+  const debouncedFetchRef = useRef(null);
+  
   const token = localStorage.getItem("token");
 
   // Load Exo 2 font
@@ -126,11 +250,88 @@ export default function MessageHistoryPage() {
     };
   }, []);
 
+  // Memoized dependencies to prevent unnecessary re-renders
+  const filterDependencies = useMemo(() => ({
+    page,
+    emailFilter,
+    phoneFilter,
+    guestFilter,
+    separateSessionFilter,
+    showGuests,
+    searchTerm,
+    dateFilter,
+    startDate,
+    endDate
+  }), [page, emailFilter, phoneFilter, guestFilter, separateSessionFilter, showGuests, searchTerm, dateFilter, startDate, endDate]);
+
+  // Debounced fetch function to prevent rapid API calls
+  const debouncedFetchMessages = useCallback(
+    debounce(() => {
+      fetchMessages();
+    }, CONFIG.DEBOUNCE_DELAY_MS),
+    [filterDependencies]
+  );
+
+  // Main effect for fetching data
   useEffect(() => {
-    fetchMessages();
-    fetchEmailsAndPhoneNumbers();
-    fetchSessions();
-  }, [page, emailFilter, phoneFilter, guestFilter, separateSessionFilter, showGuests, searchTerm, dateFilter, startDate, endDate]);
+    // Cancel any ongoing requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    // Clear previous errors
+    setError(null);
+    setSessionError(null);
+
+    // Fetch data with proper error handling
+    const fetchData = async () => {
+      try {
+        await Promise.allSettled([
+          fetchMessages(),
+          fetchEmailsAndPhoneNumbers(),
+          fetchSessions()
+        ]);
+      } catch (err) {
+        console.error('Error in fetchData:', err);
+        setError('Failed to load data. Please try again.');
+      }
+    };
+
+    fetchData();
+
+    // Cleanup function
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [filterDependencies]);
+
+  // Separate effect for debounced search
+  useEffect(() => {
+    if (searchTerm) {
+      debouncedFetchMessages();
+    }
+  }, [searchTerm, debouncedFetchMessages]);
+
+  // Cleanup effect to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      // Cancel any ongoing requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      // Clear cache on unmount
+      cacheRef.current.clear();
+      
+      // Clear any pending debounced calls
+      if (debouncedFetchRef.current) {
+        clearTimeout(debouncedFetchRef.current);
+      }
+    };
+  }, []);
 
   const fetchMessages = async () => {
     try {
@@ -359,10 +560,24 @@ export default function MessageHistoryPage() {
     }
   };
 
-  const fetchEmailsAndPhoneNumbers = async () => {
+  const fetchEmailsAndPhoneNumbers = useCallback(async () => {
+    // Check cache first
+    const cacheKey = 'emails-and-phones';
+    const cachedData = cacheRef.current.get(cacheKey);
+    if (cachedData) {
+      setAllEmails(cachedData.emails || []);
+      setAllPhoneNumbers(cachedData.phoneNumbers || []);
+      return;
+    }
+
     try {
-      const res = await api.get("/user/messages/unique-emails-and-phones", {
-        headers: { Authorization: `Bearer ${token}` },
+      setLoadingEmails(true);
+      
+      const res = await retryWithBackoff(async () => {
+        return api.get("/user/messages/unique-emails-and-phones", {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: abortControllerRef.current?.signal,
+        });
       });
       
       // Handle nested response structure
@@ -371,60 +586,137 @@ export default function MessageHistoryPage() {
       console.log("📊 Extracted emails:", emailData.emails?.length || 0);
       console.log("📊 Extracted phone numbers:", emailData.phoneNumbers?.length || 0);
       
-      setAllEmails(emailData.emails || []);
-      setAllPhoneNumbers(emailData.phoneNumbers || []);
+      const emails = emailData.emails || [];
+      const phoneNumbers = emailData.phoneNumbers || [];
+      
+      // Cache the results
+      cacheRef.current.set(cacheKey, { emails, phoneNumbers });
+      
+      setAllEmails(emails);
+      setAllPhoneNumbers(phoneNumbers);
     } catch (err) {
       console.error("Failed to fetch emails and phone numbers", err);
+      setError('Failed to load contact data. Please try again.');
+    } finally {
+      setLoadingEmails(false);
     }
-  };
+  }, [token]);
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
+    // Check cache first
+    const cacheKey = 'sessions';
+    const cachedSessions = cacheRef.current.get(cacheKey);
+    if (cachedSessions) {
+      setAllSessions(cachedSessions);
+      return;
+    }
+
     try {
-      // Fetch all sessions from the dedicated endpoint
-      const res = await api.get("/user/sessions", {
-        headers: { Authorization: `Bearer ${token}` },
+      setLoadingSessions(true);
+      setSessionError(null);
+
+      // Fetch all sessions from the dedicated endpoint with retry logic
+      const res = await retryWithBackoff(async () => {
+        return api.get("/user/sessions", {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: abortControllerRef.current?.signal,
+        });
       });
+
       const sessionData = res.data.data || res.data;
       const sessionsRaw = sessionData.sessions || [];
 
-      // For accuracy, query one message per session to determine guest status
-      const sessionChecks = sessionsRaw.map(async (session) => {
-        try {
-          // Fetch more messages (up to 100) for this session and check if any are guest messages
-          const resp = await api.get(`/user/messages?session_id=${encodeURIComponent(session.session_id)}&limit=100`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const d = resp.data.data || resp.data;
-          const msgs = d.messages || [];
-          const isGuest = msgs.some(m => m.is_guest === true);
-          console.log(`Session check for ${session.session_id}: msgs=${msgs.length} is_guest=${isGuest}`);
-          // Log up to first 3 messages for inspection
-          console.log(msgs.slice(0,3));
-          return {
-            id: session.session_id,
-            name: `Session: ${session.session_id}`,
-            is_guest: isGuest,
-          };
-        } catch (e) {
-          // If request fails, default to false (user session) but log the error
-          console.error(`Failed to fetch messages for session ${session.session_id}`, e);
-          return {
-            id: session.session_id,
-            name: `Session: ${session.session_id}`,
-            is_guest: false,
-          };
-        }
-      });
+      if (sessionsRaw.length === 0) {
+        setAllSessions([]);
+        return;
+      }
 
-      const settled = await Promise.allSettled(sessionChecks);
-      const sessions = settled.map(s => (s.status === 'fulfilled' ? s.value : { id: '', name: '', is_guest: false })).filter(s => s.id);
-  setAllSessions(sessions);
-  console.log("📊 All sessions fetched:", sessions.length, sessions.slice(0,10));
+      // Limit the number of sessions to check to prevent infinite loops
+      const limitedSessions = sessionsRaw.slice(0, CONFIG.MAX_SESSIONS_TO_CHECK);
+
+      // Process sessions in batches to prevent overwhelming the server
+      const processSessionsInBatches = async (sessions) => {
+        const batchSize = CONFIG.MAX_CONCURRENT_REQUESTS;
+        const results = [];
+
+        for (let i = 0; i < sessions.length; i += batchSize) {
+          const batch = sessions.slice(i, i + batchSize);
+          
+          const batchPromises = batch.map(async (session, batchIndex) => {
+            const globalIndex = i + batchIndex;
+            
+            return requestQueueRef.current.add(async () => {
+              try {
+                // Add delay between requests to prevent rate limiting
+                if (globalIndex > 0) {
+                  await new Promise(resolve => 
+                    setTimeout(resolve, CONFIG.REQUEST_DELAY_MS * (globalIndex % CONFIG.MAX_CONCURRENT_REQUESTS))
+                  );
+                }
+
+                // Fetch only 1 message to check guest status (more efficient)
+                const resp = await retryWithBackoff(async () => {
+                  return api.get(`/user/messages?session_id=${encodeURIComponent(session.session_id)}&limit=1`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                    signal: abortControllerRef.current?.signal,
+                  });
+                });
+
+                const d = resp.data.data || resp.data;
+                const msgs = d.messages || [];
+                const isGuest = msgs.some(m => m.is_guest === true);
+                
+                // Only log for first few sessions to reduce console spam
+                if (globalIndex < 5) {
+                  console.log(`Session check for ${session.session_id}: msgs=${msgs.length} is_guest=${isGuest}`);
+                }
+                
+                return {
+                  id: session.session_id,
+                  name: `Session: ${session.session_id}`,
+                  is_guest: isGuest,
+                };
+              } catch (e) {
+                // If request fails, default to false (user session) but log the error
+                if (globalIndex < 5) {
+                  console.error(`Failed to fetch messages for session ${session.session_id}`, e);
+                }
+                return {
+                  id: session.session_id,
+                  name: `Session: ${session.session_id}`,
+                  is_guest: false,
+                };
+              }
+            });
+          });
+
+          const batchResults = await Promise.allSettled(batchPromises);
+          const successfulResults = batchResults
+            .filter(result => result.status === 'fulfilled')
+            .map(result => result.value)
+            .filter(session => session.id);
+          
+          results.push(...successfulResults);
+        }
+
+        return results;
+      };
+
+      const sessions = await processSessionsInBatches(limitedSessions);
+      
+      // Cache the results
+      cacheRef.current.set(cacheKey, sessions);
+      setAllSessions(sessions);
+      
+      console.log("📊 All sessions fetched:", sessions.length, sessions.slice(0, 10));
     } catch (err) {
       console.error("Failed to fetch sessions from /user/sessions", err);
+      setSessionError('Failed to load sessions. Please try again.');
       setAllSessions([]);
+    } finally {
+      setLoadingSessions(false);
     }
-  };
+  }, [token]);
 
   const openChatModal = async (contact) => {
     if (!contact) return; // safety
@@ -692,14 +984,55 @@ export default function MessageHistoryPage() {
           </p>
         </div>
 
+        {/* Error Display */}
+        {(error || sessionError) && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mb-8">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-6 h-6 text-red-500" />
+              <div>
+                <h3 className="text-lg font-semibold text-red-800">Error Loading Data</h3>
+                <p className="text-sm text-red-600 mt-1">
+                  {error || sessionError}
+                </p>
+                <button
+                  onClick={() => {
+                    setError(null);
+                    setSessionError(null);
+                    cacheRef.current.clear();
+                    fetchMessages();
+                    fetchEmailsAndPhoneNumbers();
+                    fetchSessions();
+                  }}
+                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Enhanced Action Bar */}
         <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-8 shadow-sm">
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <div className={`w-2 h-2 rounded-full animate-pulse ${
+                loadingMessages || loadingSessions || loadingEmails 
+                  ? 'bg-yellow-400' 
+                  : 'bg-green-400'
+              }`}></div>
               <span className="text-sm font-medium text-gray-600">
-                {searchTerm ? `${messages.length} messages found` : `${messages.length} messages loaded`}
+                {loadingMessages || loadingSessions || loadingEmails 
+                  ? 'Loading data...' 
+                  : searchTerm 
+                    ? `${messages.length} messages found` 
+                    : `${messages.length} messages loaded`
+                }
               </span>
+              {(loadingSessions || loadingEmails) && (
+                <RefreshCw className="w-4 h-4 text-gray-400 animate-spin" />
+              )}
             </div>
             
             <div className="flex flex-col sm:flex-row gap-3">
@@ -746,7 +1079,14 @@ export default function MessageHistoryPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-semibold text-gray-800">
-                    {allEmails.length + allPhoneNumbers.length}
+                    {loadingEmails ? (
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Loading...</span>
+                      </div>
+                    ) : (
+                      allEmails.length + allPhoneNumbers.length
+                    )}
                   </div>
                   <div className="text-sm text-gray-600">contacts available</div>
                 </div>
@@ -874,7 +1214,14 @@ export default function MessageHistoryPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-semibold text-gray-800">
-                    {allSessions.length}
+                    {loadingSessions ? (
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Loading...</span>
+                      </div>
+                    ) : (
+                      allSessions.length
+                    )}
                   </div>
                   <div className="text-sm text-gray-600">sessions available</div>
                 </div>
