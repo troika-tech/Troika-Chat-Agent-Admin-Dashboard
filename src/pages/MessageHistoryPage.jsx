@@ -13,12 +13,15 @@ import {
   Calendar,
   AlertCircle,
   RefreshCw,
+  Check,
 } from "lucide-react";
 import api from "../services/api";
 import { toast } from "react-toastify";
 import { Dialog, Menu } from "@headlessui/react";
 import Layout from "../components/Layout";
 import { saveAs } from "file-saver";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const isEmail = (v = "") => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
@@ -29,7 +32,6 @@ const isGuestUser = (msg) => {
 
 // Constants for production-ready configuration
 const CONFIG = {
-  MAX_SESSIONS_TO_CHECK: 50,
   MAX_CONCURRENT_REQUESTS: 5,
   REQUEST_DELAY_MS: 100,
   RETRY_ATTEMPTS: 3,
@@ -200,7 +202,7 @@ export default function MessageHistoryPage() {
   const [emailFilter, setEmailFilter] = useState("");
   const [phoneFilter, setPhoneFilter] = useState("");
   const [guestFilter, setGuestFilter] = useState(false);
-  const [separateSessionFilter, setSeparateSessionFilter] = useState("");
+  const [guestUserFilter, setGuestUserFilter] = useState(""); // Renamed from separateSessionFilter
   const [showGuests, setShowGuests] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -216,7 +218,10 @@ export default function MessageHistoryPage() {
   
   // Modal states
   const [selectedChat, setSelectedChat] = useState(null);
+  const [selectedSessionId, setSelectedSessionId] = useState(null); // Store session ID for guests
+  const [isSelectedChatGuest, setIsSelectedChatGuest] = useState(false); // Track if selected chat is a guest
   const [chatHistory, setChatHistory] = useState([]);
+  const [pdfDownloaded, setPdfDownloaded] = useState(false); // Track PDF download success
   
   // Loading states
   const [loadingMessages, setLoadingMessages] = useState(true);
@@ -235,6 +240,23 @@ export default function MessageHistoryPage() {
   const debouncedFetchRef = useRef(null);
   
   const token = localStorage.getItem("token");
+
+  // Helper function to get guest number from session ID
+  const getGuestNumber = useCallback((sessionId) => {
+    if (!sessionId) return null;
+    const session = allSessions.find(s => s.id === sessionId && s.is_guest);
+    return session ? session.guest_number : null;
+  }, [allSessions]);
+
+  // Helper function to get guest display name
+  const getGuestDisplayName = useCallback((msg) => {
+    if (!isGuestUser(msg)) return null;
+    const guestNumber = getGuestNumber(msg.session_id);
+    if (!guestNumber) {
+      console.log("⚠️ No guest number found for session:", msg.session_id?.substring(0, 8), "Available sessions:", allSessions.length);
+    }
+    return guestNumber ? `Guest ${guestNumber}` : 'Guest';
+  }, [getGuestNumber, allSessions.length]);
 
   // Load Exo 2 font
   useEffect(() => {
@@ -256,13 +278,13 @@ export default function MessageHistoryPage() {
     emailFilter,
     phoneFilter,
     guestFilter,
-    separateSessionFilter,
+    guestUserFilter,
     showGuests,
     searchTerm,
     dateFilter,
     startDate,
     endDate
-  }), [page, emailFilter, phoneFilter, guestFilter, separateSessionFilter, showGuests, searchTerm, dateFilter, startDate, endDate]);
+  }), [page, emailFilter, phoneFilter, guestFilter, guestUserFilter, showGuests, searchTerm, dateFilter, startDate, endDate]);
 
   // Debounced fetch function to prevent rapid API calls
   const debouncedFetchMessages = useCallback(
@@ -362,8 +384,8 @@ export default function MessageHistoryPage() {
         }
         
         // Enable session filter
-        if (separateSessionFilter) {
-          params.append('session_id', separateSessionFilter);
+        if (guestUserFilter) {
+          params.append('session_id', guestUserFilter);
         }
         
         url += `?${params.toString()}`;
@@ -444,9 +466,9 @@ export default function MessageHistoryPage() {
             params.append('is_guest', 'true');
           }
           
-          // Enable session filter
-          if (separateSessionFilter) {
-            params.append('session_id', separateSessionFilter);
+          // Enable guest user filter
+          if (guestUserFilter) {
+            params.append('session_id', guestUserFilter);
           }
           
           url += `?${params.toString()}`;
@@ -521,9 +543,9 @@ export default function MessageHistoryPage() {
             params.append('is_guest', 'true');
           }
           
-          // Enable session filter
-          if (separateSessionFilter) {
-            params.append('session_id', separateSessionFilter);
+          // Enable guest user filter
+          if (guestUserFilter) {
+            params.append('session_id', guestUserFilter);
           }
           
           url += `?${params.toString()}`;
@@ -554,7 +576,14 @@ export default function MessageHistoryPage() {
         }
       }
     } catch (err) {
+      console.error("Failed to fetch messages:", err);
+      console.error("Error details:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
       toast.error("Failed to fetch messages");
+      setError(err.message || "Failed to fetch messages");
     } finally {
       setLoadingMessages(false);
     }
@@ -574,7 +603,7 @@ export default function MessageHistoryPage() {
       setLoadingEmails(true);
       
       const res = await retryWithBackoff(async () => {
-        return api.get("/user/messages/unique-emails-and-phones", {
+        return api.get("/user/messages/unique-emails-and-phones-from-messages", {
           headers: { Authorization: `Bearer ${token}` },
           signal: abortControllerRef.current?.signal,
         });
@@ -583,19 +612,31 @@ export default function MessageHistoryPage() {
       // Handle nested response structure
       const emailData = res.data.data || res.data;
       console.log("📊 Emails/Phones response:", res.data);
-      console.log("📊 Extracted emails:", emailData.emails?.length || 0);
-      console.log("📊 Extracted phone numbers:", emailData.phoneNumbers?.length || 0);
-      
-      const emails = emailData.emails || [];
-      const phoneNumbers = emailData.phoneNumbers || [];
-      
+      console.log("📊 Extracted data:", emailData);
+      console.log("📊 Extracted emails:", emailData.emails?.length || 0, emailData.emails);
+      console.log("📊 Extracted phone numbers:", emailData.phoneNumbers?.length || 0, emailData.phoneNumbers);
+
+      // Filter out empty/null values
+      const emails = (emailData.emails || []).filter(email => email && email.trim() !== '');
+      const phoneNumbers = (emailData.phoneNumbers || []).filter(phone => phone && phone.toString().trim() !== '');
+
       // Cache the results
       cacheRef.current.set(cacheKey, { emails, phoneNumbers });
-      
+
       setAllEmails(emails);
       setAllPhoneNumbers(phoneNumbers);
+
+      console.log("✅ Contacts loaded successfully:", {
+        emailsCount: emails.length,
+        phonesCount: phoneNumbers.length
+      });
     } catch (err) {
-      console.error("Failed to fetch emails and phone numbers", err);
+      console.error("❌ Failed to fetch emails and phone numbers:", err);
+      console.error("Error details:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
       setError('Failed to load contact data. Please try again.');
     } finally {
       setLoadingEmails(false);
@@ -631,10 +672,9 @@ export default function MessageHistoryPage() {
         return;
       }
 
-      // Limit the number of sessions to check to prevent infinite loops
-      const limitedSessions = sessionsRaw.slice(0, CONFIG.MAX_SESSIONS_TO_CHECK);
+      console.log(`📊 Processing ${sessionsRaw.length} total sessions (no limit applied)`);
 
-      // Process sessions in batches to prevent overwhelming the server
+      // Process ALL sessions - backend already returns messages for each session
       const processSessionsInBatches = async (sessions) => {
         const batchSize = CONFIG.MAX_CONCURRENT_REQUESTS;
         const results = [];
@@ -642,51 +682,28 @@ export default function MessageHistoryPage() {
         for (let i = 0; i < sessions.length; i += batchSize) {
           const batch = sessions.slice(i, i + batchSize);
           
-          const batchPromises = batch.map(async (session, batchIndex) => {
+          const batchPromises = batch.map((session, batchIndex) => {
             const globalIndex = i + batchIndex;
-            
-            return requestQueueRef.current.add(async () => {
-              try {
-                // Add delay between requests to prevent rate limiting
-                if (globalIndex > 0) {
-                  await new Promise(resolve => 
-                    setTimeout(resolve, CONFIG.REQUEST_DELAY_MS * (globalIndex % CONFIG.MAX_CONCURRENT_REQUESTS))
-                  );
-                }
 
-                // Fetch only 1 message to check guest status (more efficient)
-                const resp = await retryWithBackoff(async () => {
-                  return api.get(`/user/messages?session_id=${encodeURIComponent(session.session_id)}&limit=1`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                    signal: abortControllerRef.current?.signal,
-                  });
-                });
+            // Backend already returns messages for each session - use them directly!
+            const msgs = session.messages || [];
+            const isGuest = msgs.some(m => m.is_guest === true || (!m.email && !m.phone && m.session_id));
+            const firstTimestamp = msgs.length > 0 ? new Date(msgs[0].timestamp).getTime() : Date.now();
 
-                const d = resp.data.data || resp.data;
-                const msgs = d.messages || [];
-                const isGuest = msgs.some(m => m.is_guest === true);
-                
-                // Only log for first few sessions to reduce console spam
-                if (globalIndex < 5) {
-                  console.log(`Session check for ${session.session_id}: msgs=${msgs.length} is_guest=${isGuest}`);
-                }
-                
-                return {
-                  id: session.session_id,
-                  name: `Session: ${session.session_id}`,
-                  is_guest: isGuest,
-                };
-              } catch (e) {
-                // If request fails, default to false (user session) but log the error
-                if (globalIndex < 5) {
-                  console.error(`Failed to fetch messages for session ${session.session_id}`, e);
-                }
-                return {
-                  id: session.session_id,
-                  name: `Session: ${session.session_id}`,
-                  is_guest: false,
-                };
-              }
+            // Only log for first few sessions to reduce console spam
+            if (globalIndex < 5) {
+              console.log(`Session processed ${session.session_id}:`, {
+                msgCount: msgs.length,
+                isGuest: isGuest,
+                firstTimestamp: new Date(firstTimestamp).toISOString()
+              });
+            }
+
+            return Promise.resolve({
+              id: session.session_id,
+              name: `Session: ${session.session_id}`,
+              is_guest: isGuest,
+              firstTimestamp: firstTimestamp,
             });
           });
 
@@ -702,13 +719,32 @@ export default function MessageHistoryPage() {
         return results;
       };
 
-      const sessions = await processSessionsInBatches(limitedSessions);
-      
+      const sessions = await processSessionsInBatches(sessionsRaw);
+
+      // 🎯 Add guest numbering based on timestamp (chronological order)
+      // Filter guest sessions and sort by their first message timestamp
+      const guestSessions = sessions.filter(s => s.is_guest);
+      const nonGuestSessions = sessions.filter(s => !s.is_guest);
+
+      // Sort guest sessions by timestamp (earliest first)
+      guestSessions.sort((a, b) => a.firstTimestamp - b.firstTimestamp);
+
+      // Assign guest numbers sequentially
+      const numberedGuestSessions = guestSessions.map((session, index) => ({
+        ...session,
+        guest_number: index + 1,
+        name: `Guest ${index + 1}`
+      }));
+
+      // Combine numbered guest sessions with non-guest sessions
+      const allSessionsWithNumbers = [...numberedGuestSessions, ...nonGuestSessions];
+
       // Cache the results
-      cacheRef.current.set(cacheKey, sessions);
-      setAllSessions(sessions);
-      
-      console.log("📊 All sessions fetched:", sessions.length, sessions.slice(0, 10));
+      cacheRef.current.set(cacheKey, allSessionsWithNumbers);
+      setAllSessions(allSessionsWithNumbers);
+
+      console.log("📊 All sessions fetched:", allSessionsWithNumbers.length, "Guest sessions:", numberedGuestSessions.length);
+      console.log("📊 Guest session details:", numberedGuestSessions.map(s => ({ id: s.id.substring(0, 8), number: s.guest_number, name: s.name })));
     } catch (err) {
       console.error("Failed to fetch sessions from /user/sessions", err);
       setSessionError('Failed to load sessions. Please try again.');
@@ -724,19 +760,31 @@ export default function MessageHistoryPage() {
     setSelectedChat(contact);
     setLoadingChat(true);
 
+    // Determine if this is a guest session
+    const isGuest = contact.includes('Session:');
+    let sessionId = null;
+
+    if (isGuest) {
+      sessionId = contact.replace('Session: ', '');
+      setSelectedSessionId(sessionId);
+      setIsSelectedChatGuest(true);
+    } else {
+      setSelectedSessionId(null);
+      setIsSelectedChatGuest(false);
+    }
+
     try {
       // Test basic API connectivity
       const testUrl = `/user/messages`;
       const testRes = await api.get(testUrl, { headers: { Authorization: `Bearer ${token}` } });
-      
+
       // Build URL with proper parameters for the existing endpoint
       const params = new URLSearchParams();
       params.append('limit', '1000'); // Fetch more messages for chat history
       params.append('page', '1');
-      
-      if (contact.includes('Session:')) {
+
+      if (isGuest) {
         // Handle guest session
-        const sessionId = contact.replace('Session: ', '');
         params.append('session_id', sessionId);
         console.log("Filtering by session_id:", sessionId);
       } else {
@@ -885,17 +933,38 @@ export default function MessageHistoryPage() {
 
   const closeModal = () => {
     setSelectedChat(null);
+    setSelectedSessionId(null);
+    setIsSelectedChatGuest(false);
     setChatHistory([]);
+    setPdfDownloaded(false);
   };
 
   const downloadChatPDF = async () => {
     if (!selectedChat) return;
 
     try {
-      const isMail = isEmail(selectedChat);
-      const url = isMail
-        ? `/user/messages/${encodeURIComponent(selectedChat.toLowerCase())}/pdf`
-        : `/user/messages/phone/${encodeURIComponent(selectedChat)}/pdf`;
+      let url;
+      let filename;
+
+      if (isSelectedChatGuest && selectedSessionId) {
+        // Guest session PDF download
+        url = `/user/messages/session/${encodeURIComponent(selectedSessionId)}/pdf`;
+
+        // Try to find guest number for filename
+        const session = allSessions.find(s => s.id === selectedSessionId && s.is_guest);
+        filename = session?.guest_number
+          ? `chat_Guest_${session.guest_number}.pdf`
+          : `chat_guest_session.pdf`;
+      } else {
+        // Regular email/phone PDF download
+        const isMail = isEmail(selectedChat);
+        url = isMail
+          ? `/user/messages/${encodeURIComponent(selectedChat.toLowerCase())}/pdf`
+          : `/user/messages/phone/${encodeURIComponent(selectedChat)}/pdf`;
+
+        const safeName = selectedChat.replace(/[^a-zA-Z0-9+@.]/g, "_");
+        filename = `chat_${safeName}.pdf`;
+      }
 
       const res = await api.get(url, {
         responseType: "blob",
@@ -903,8 +972,13 @@ export default function MessageHistoryPage() {
       });
 
       const blob = new Blob([res.data], { type: "application/pdf" });
-      const safeName = selectedChat.replace(/[^a-zA-Z0-9+@.]/g, "_");
-      saveAs(blob, `chat_${safeName}.pdf`);
+      saveAs(blob, filename);
+
+      // Show success state for 5 seconds
+      setPdfDownloaded(true);
+      setTimeout(() => {
+        setPdfDownloaded(false);
+      }, 5000);
     } catch (err) {
       toast.error("Failed to download chat PDF");
       console.error(err);
@@ -944,19 +1018,19 @@ export default function MessageHistoryPage() {
       setEmailFilter(value);
       setPhoneFilter("");
       setGuestFilter(false);
-      setSeparateSessionFilter("");
+      setGuestUserFilter("");
     } else if (filterType === "phone") {
       setPhoneFilter(value);
       setEmailFilter("");
       setGuestFilter(false);
-      setSeparateSessionFilter("");
+      setGuestUserFilter("");
     } else if (filterType === "guest") {
       setGuestFilter(value);
       setEmailFilter("");
       setPhoneFilter("");
-      setSeparateSessionFilter("");
-    } else if (filterType === "session") {
-      setSeparateSessionFilter(value);
+      setGuestUserFilter("");
+    } else if (filterType === "guestUser") {
+      setGuestUserFilter(value);
       setEmailFilter("");
       setPhoneFilter("");
       setGuestFilter(false);
@@ -1199,7 +1273,7 @@ export default function MessageHistoryPage() {
             </div>
           </div>
 
-          {/* Separate Session Filter */}
+          {/* Guest User Filter */}
           <div className="flex-1 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 relative group filter-dropdown">
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-6">
@@ -1208,8 +1282,8 @@ export default function MessageHistoryPage() {
                     <Users className="w-6 h-6" />
                   </div>
                     <div>
-                    <h3 className="text-lg font-bold text-gray-800 mb-1">Filter by Session</h3>
-                    <p className="text-sm text-gray-600">Filter by sessions</p>
+                    <h3 className="text-lg font-bold text-gray-800 mb-1">Filter by Guest User</h3>
+                    <p className="text-sm text-gray-600">Select a specific guest user to view their messages</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -1220,37 +1294,42 @@ export default function MessageHistoryPage() {
                         <span>Loading...</span>
                       </div>
                     ) : (
-                      allSessions.length
+                      allSessions.filter(s => s.is_guest).length
                     )}
                   </div>
-                  <div className="text-sm text-gray-600">sessions available</div>
+                  <div className="text-sm text-gray-600">guest users</div>
                 </div>
               </div>
-            
+
             <Menu as="div" className="relative inline-block text-left w-full">
               <Menu.Button className="w-full inline-flex cursor-pointer items-center justify-between gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white font-semibold hover:from-[#2a1d7c] hover:to-[#015a58] focus:outline-none transition-all duration-300 border border-gray-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <Users className="w-5 h-5 text-white flex-shrink-0" />
                   <span className="truncate text-base">
-                    {separateSessionFilter ? `Session: ${separateSessionFilter.substring(0, 8)}...` : "All Sessions"}
+                    {guestUserFilter ? (() => {
+                      const selectedSession = allSessions.find(s => s.id === guestUserFilter);
+                      return selectedSession?.guest_number
+                        ? selectedSession.name
+                        : `Guest User`;
+                    })() : "All Guest Users"}
                   </span>
                 </div>
                 <ChevronDown className="w-5 h-5 text-white flex-shrink-0" />
               </Menu.Button>
 
-              <Menu.Items className="absolute left-0 top-full mt-2 w-full origin-top-left bg-white border border-gray-200 rounded-2xl shadow-xl focus:outline-none z-[10001] animate-in slide-in-from-top-2 duration-200">
+              <Menu.Items className="absolute left-0 top-full mt-2 w-full origin-top-left bg-white border border-gray-200 rounded-2xl shadow-xl focus:outline-none z-[10000] animate-in slide-in-from-top-2 duration-200">
                 <div className="py-3 max-h-80 overflow-y-auto overflow-x-hidden">
                   <Menu.Item>
                     {({ active }) => (
                       <button
                         onClick={() => {
-                          setSeparateSessionFilter("");
+                          setGuestUserFilter("");
                           setEmailFilter("");
                           setPhoneFilter("");
                           setPage(1);
                         }}
                         className={`w-full cursor-pointer text-left px-6 py-3 text-sm transition-all duration-200 rounded-lg mx-2 ${
-                          !separateSessionFilter
+                          !guestUserFilter
                             ? "bg-gradient-to-r from-[#3a2d9c] to-[#017977] font-semibold text-white shadow-md"
                             : active
                             ? "bg-gray-100"
@@ -1259,18 +1338,18 @@ export default function MessageHistoryPage() {
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-2 h-2 bg-[#3a2d9c] rounded-full"></div>
-                          <span className={!separateSessionFilter ? "text-white" : "text-gray-800"}>All Sessions</span>
+                          <span className={!guestUserFilter ? "text-white" : "text-gray-800"}>All Guest Users</span>
                         </div>
                       </button>
                     )}
                   </Menu.Item>
-                  {allSessions.map((session, idx) => (
-                    <Menu.Item key={`separate-session-${idx}`}>
+                  {allSessions.filter(s => s.is_guest && s.guest_number).map((session, idx) => (
+                    <Menu.Item key={`guest-user-${idx}`}>
                       {({ active }) => (
                         <button
-                          onClick={() => handleFilterSelection("session", session.id)}
+                          onClick={() => handleFilterSelection("guestUser", session.id)}
                           className={`w-full text-left px-6 py-3 text-sm transition-all duration-200 rounded-lg mx-2 ${
-                            separateSessionFilter === session.id
+                            guestUserFilter === session.id
                               ? "bg-gradient-to-r from-[#3a2d9c] to-[#017977] font-semibold text-white shadow-md"
                               : active
                               ? "bg-gray-100"
@@ -1278,11 +1357,14 @@ export default function MessageHistoryPage() {
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <Users className="w-4 h-4 text-[#3a2d9c]" />
+                            <Users className={`w-4 h-4 ${guestUserFilter === session.id ? "text-white" : "text-[#3a2d9c]"}`} />
                             <div className="flex flex-col">
-                              <span className={`font-medium ${separateSessionFilter === session.id ? "text-white" : "text-gray-800"}`}>Session: {session.id.substring(0, 8)}...</span>
-                              {/* Removed guest/user tag - only show session id */}
-                              <span className={`text-xs ${separateSessionFilter === session.id ? "text-gray-300" : "text-gray-500"}`}></span>
+                              <span className={`font-medium ${guestUserFilter === session.id ? "text-white" : "text-gray-800"}`}>
+                                {session.name}
+                              </span>
+                              <span className={`text-xs ${guestUserFilter === session.id ? "text-gray-300" : "text-gray-500"}`}>
+                                Session: {session.id.substring(0, 8)}...
+                              </span>
                             </div>
                           </div>
                         </button>
@@ -1533,7 +1615,7 @@ export default function MessageHistoryPage() {
                           {isGuest ? (
                             <>
                               <span className="px-2 py-1 bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white text-xs md:text-sm font-medium rounded-full shadow-md">
-                                Guest
+                                {getGuestDisplayName(msg)}
                               </span>
                               <span className="text-gray-600 text-xs md:text-sm">{msg.sender}</span>
                             </>
@@ -1546,15 +1628,17 @@ export default function MessageHistoryPage() {
                         </div>
                       </td>
                       <td className="px-2 md:px-4 py-3 md:py-4">
-                        <div className="text-gray-600 group-hover:text-gray-800 transition-colors duration-200 text-xs md:text-sm lg:text-base line-clamp-2 md:line-clamp-3">
-                          {msg.content}
+                        <div className="text-gray-600 group-hover:text-gray-800 transition-colors duration-200 text-xs md:text-sm lg:text-base line-clamp-2 md:line-clamp-3 prose prose-sm max-w-none">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {msg.content}
+                          </ReactMarkdown>
                         </div>
                       </td>
                       <td className="w-20 md:w-32 lg:w-36 px-2 md:px-4 py-3 md:py-4 text-center">
                         {isGuest ? (
                           <span className="inline-flex items-center gap-1 text-[#3a2d9c] bg-gradient-to-r from-purple-100 to-teal-100 px-2 py-1 rounded-full text-xs md:text-sm font-medium shadow-sm">
                             <Users className="w-3 h-3 md:w-4 md:h-4" />
-                            <span className="hidden sm:inline">Guest</span>
+                            <span className="hidden sm:inline">{getGuestDisplayName(msg)}</span>
                           </span>
                         ) : (
                           <div className="flex flex-col items-center gap-1">
@@ -1668,7 +1752,11 @@ export default function MessageHistoryPage() {
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse flex-shrink-0"></div>
                         <p className="text-xs sm:text-sm text-gray-300 truncate font-medium">
-                          {selectedChat}
+                          {selectedChat?.includes('Session:') ? (() => {
+                            const sessionId = selectedChat.replace('Session: ', '');
+                            const session = allSessions.find(s => s.id === sessionId && s.is_guest);
+                            return session?.guest_number ? `Guest ${session.guest_number}` : selectedChat;
+                          })() : selectedChat}
                         </p>
                       </div>
                     </div>
@@ -1676,10 +1764,18 @@ export default function MessageHistoryPage() {
                   <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                     <button
                       onClick={downloadChatPDF}
-                      className="group p-2 sm:p-3 text-gray-400 hover:text-blue-400 hover:bg-blue-900/30 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                      title="Download Chat"
+                      className={`group p-2 sm:p-3 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-110 hover:shadow-lg ${
+                        pdfDownloaded
+                          ? 'text-green-400 bg-green-900/30'
+                          : 'text-gray-400 hover:text-blue-400 hover:bg-blue-900/30'
+                      }`}
+                      title={pdfDownloaded ? "Downloaded!" : "Download Chat PDF"}
                     >
-                      <Download className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform duration-200" />
+                      {pdfDownloaded ? (
+                        <Check className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
+                      ) : (
+                        <Download className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform duration-200" />
+                      )}
                     </button>
                     <button
                       onClick={closeModal}
@@ -1726,9 +1822,11 @@ export default function MessageHistoryPage() {
                       </div>
                       
                       {/* Message Content */}
-                      <p className="whitespace-pre-wrap leading-relaxed text-base mb-4 font-medium">
-                        {msg.content}
-                      </p>
+                      <div className="whitespace-pre-wrap leading-relaxed text-base mb-4 font-medium prose prose-sm prose-invert max-w-none">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
                       
                       {/* Message Timestamp */}
                       <div className="flex justify-end">
