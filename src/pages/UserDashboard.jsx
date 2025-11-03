@@ -555,11 +555,37 @@ const UserDashboard = () => {
       return (now - msgDate) <= 5 * 60 * 1000;
     });
 
-    // Calculate last session datetime
-    const lastSessionDateTime = messages.length > 0 ? 
-      new Date(Math.max(...messages.map(msg => new Date(msg.timestamp)))) : null;
+    // Calculate last session datetime - find when the most recent session started
+    let lastSessionDateTime = null;
+    if (messages.length > 0) {
+      // Group messages by session_id
+      const sessionsMap = new Map();
+      messages.forEach(msg => {
+        if (msg.session_id) {
+          if (!sessionsMap.has(msg.session_id)) {
+            sessionsMap.set(msg.session_id, []);
+          }
+          sessionsMap.get(msg.session_id).push(new Date(msg.timestamp));
+        }
+      });
 
-    // Calculate last message sent datetime
+      // Find the last activity time (latest message) for each session to identify the most recent session
+      const sessionData = Array.from(sessionsMap.entries()).map(([sessionId, timestamps]) => ({
+        sessionId,
+        lastActivity: new Date(Math.max(...timestamps)),
+        startTime: new Date(Math.min(...timestamps))
+      }));
+
+      // Get the most recent session (by last activity) and return its start time
+      if (sessionData.length > 0) {
+        const mostRecentSession = sessionData.reduce((prev, current) => 
+          current.lastActivity > prev.lastActivity ? current : prev
+        );
+        lastSessionDateTime = mostRecentSession.startTime;
+      }
+    }
+
+    // Calculate last message sent datetime - find the most recent message timestamp
     const lastMessageDateTime = messages.length > 0 ? 
       new Date(Math.max(...messages.map(msg => new Date(msg.timestamp)))) : null;
 
@@ -697,20 +723,32 @@ const UserDashboard = () => {
         return;
       }
 
+      console.log("🚀 [fetchData] Starting data fetch...");
+
       const [companyRes, usageRes] = await Promise.all([
         fetchUserCompany(),
         fetchUserUsage(),
       ]);
 
+      console.log("📦 [fetchData] Raw API responses:");
+      console.log("  - companyRes:", companyRes);
+      console.log("  - usageRes:", usageRes);
+
       const companyData = companyRes.data;
       setCompany(companyData);
-      
+      console.log("🏢 [fetchData] Company data:", companyData);
+
       // Handle nested response structure for usage data
       const usageData = usageRes.data.data || usageRes.data;
+      console.log("📊 [fetchData] Usage data extracted:", usageData);
+      console.log("  - total_messages:", usageData.total_messages);
+      console.log("  - unique_users:", usageData.unique_users);
+      console.log("  - last_activity:", usageData.last_activity);
       setUsage(usageData);
 
       // Extract chatbot_id from the nested data structure
       const chatbotId = companyData.data?.chatbot_id || companyData.chatbot_id;
+      console.log("🤖 [fetchData] Chatbot ID:", chatbotId);
 
       if (chatbotId) {
         await fetchSubscription(chatbotId);
@@ -720,13 +758,14 @@ const UserDashboard = () => {
         setPlan(null); // Prevent crashing
       }
     } catch (err) {
+      console.error("❌ [fetchData] Error:", err);
       // Handle 401 Unauthorized errors
       if (err.response?.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/";
         return;
       }
-      
+
       toast.error("Failed to load dashboard data");
       setPlan(null); // Ensure no crash
     } finally {
@@ -1229,9 +1268,9 @@ const UserDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Active Users Card */}
+                  {/* Total Users Card */}
                   <div className="bg-gradient-to-r from-[#3a2d9c]/80 to-[#017977]/80 rounded-lg p-6 text-white relative">
-                    <div className="text-base font-medium mb-1">Active Users</div>
+                    <div className="text-base font-medium mb-1">Total Users</div>
                     <div className="text-4xl font-bold mb-4">{usage?.unique_users || 0}</div>
                     <div className="absolute bottom-4 right-4 opacity-50">
                       <Users size={37} />

@@ -15,11 +15,11 @@ export default function Layout({ children, chatbotId  }) {
   };
 
   return (
-    <div className="flex bg-gray-900">
+    <div className="flex bg-gray-50">
       <Sidebar chatbotId={chatbotId} isOpen={sidebarOpen} onClose={handleSidebarClose}/>
-      <div className="flex flex-col flex-1 min-h-screen md:ml-64 bg-gray-900">
+      <div className="flex flex-col flex-1 min-h-screen md:ml-64 bg-gray-50">
         <Header onMenuClick={handleMenuClick} />
-        <main className="p-4 md:p-6 bg-white">{children}</main>
+        <main className="p-4 md:p-6 bg-gray-50 flex-1">{children}</main>
       </div>
     </div>
   );

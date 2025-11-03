@@ -14,6 +14,7 @@ import {
   AlertCircle,
   RefreshCw,
   Check,
+  Brain,
 } from "lucide-react";
 import api from "../services/api";
 import { toast } from "react-toastify";
@@ -22,6 +23,11 @@ import Layout from "../components/Layout";
 import { saveAs } from "file-saver";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs from "dayjs";
+import { Popover, Box } from "@mui/material";
 
 const isEmail = (v = "") => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
@@ -207,9 +213,10 @@ export default function MessageHistoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [dateFilter, setDateFilter] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [customStartDate, setCustomStartDate] = useState(null);
+  const [customEndDate, setCustomEndDate] = useState(null);
   const [isDateRange, setIsDateRange] = useState(false);
+  const [dateAnchorEl, setDateAnchorEl] = useState(null);
   
   // Data states
   const [allEmails, setAllEmails] = useState([]);
@@ -282,9 +289,9 @@ export default function MessageHistoryPage() {
     showGuests,
     searchTerm,
     dateFilter,
-    startDate,
-    endDate
-  }), [page, emailFilter, phoneFilter, guestFilter, guestUserFilter, showGuests, searchTerm, dateFilter, startDate, endDate]);
+    customStartDate,
+    customEndDate
+  }), [page, emailFilter, phoneFilter, guestFilter, guestUserFilter, showGuests, searchTerm, dateFilter, customStartDate, customEndDate]);
 
   // Debounced fetch function to prevent rapid API calls
   const debouncedFetchMessages = useCallback(
@@ -414,7 +421,7 @@ export default function MessageHistoryPage() {
         allMessages = allMessages.filter(msg => 
           msg.content.toLowerCase().includes(searchTerm.toLowerCase())
         );
-        
+
         // Client-side date filtering
         if (dateFilter) {
           const selectedDate = new Date(dateFilter);
@@ -423,10 +430,10 @@ export default function MessageHistoryPage() {
             return msgDate.toDateString() === selectedDate.toDateString();
           });
         }
-        
-        if (startDate && endDate) {
-          const start = new Date(startDate);
-          const end = new Date(endDate);
+
+        if (customStartDate && customEndDate) {
+          const start = customStartDate.toDate();
+          const end = customEndDate.toDate();
           end.setHours(23, 59, 59, 999); // Include the entire end date
           allMessages = allMessages.filter(msg => {
             const msgDate = new Date(msg.timestamp);
@@ -443,7 +450,7 @@ export default function MessageHistoryPage() {
         setTotalPages(Math.ceil(allMessages.length / 20) || 1);
       } else {
         // Check if date filters are active - if so, use client-side pagination
-        if (dateFilter || (startDate && endDate)) {
+        if (dateFilter || (customStartDate && customEndDate)) {
           // Fetch all messages for client-side filtering and pagination
           let url = `/user/messages`;
           // Add parameters for fetching all messages for date filtering
@@ -502,10 +509,10 @@ export default function MessageHistoryPage() {
               return msgDate.toDateString() === selectedDate.toDateString();
             });
           }
-          
-          if (startDate && endDate) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
+
+          if (customStartDate && customEndDate) {
+            const start = customStartDate.toDate();
+            const end = customEndDate.toDate();
             end.setHours(23, 59, 59, 999); // Include the entire end date
             allMessages = allMessages.filter(msg => {
               const msgDate = new Date(msg.timestamp);
@@ -998,19 +1005,49 @@ export default function MessageHistoryPage() {
   };
 
   const handleDateFilter = () => {
-    setPage(1); // Reset to first page when applying date filter
-    // Trigger the useEffect to refetch messages with date filters
-    fetchMessages();
+    if (isDateRange && customStartDate && customEndDate) {
+      // Use custom date range
+      setDateFilter("");
+      setPage(1);
+      setDateAnchorEl(null);
+      fetchMessages();
+    } else if (!isDateRange && dateFilter) {
+      // Use single date
+      setCustomStartDate(null);
+      setCustomEndDate(null);
+      setPage(1);
+      setDateAnchorEl(null);
+      fetchMessages();
+    } else {
+      toast.error("Please select a date or date range");
+    }
   };
 
   const clearDateFilter = () => {
     setDateFilter("");
-    setStartDate("");
-    setEndDate("");
+    setCustomStartDate(null);
+    setCustomEndDate(null);
     setIsDateRange(false);
     setPage(1);
-    // Trigger the useEffect to refetch messages without date filters
+    setDateAnchorEl(null);
     fetchMessages();
+  };
+
+  const handleDatePickerOpen = (event) => {
+    setDateAnchorEl(event.currentTarget);
+  };
+
+  const handleDatePickerClose = () => {
+    setDateAnchorEl(null);
+  };
+
+  const getDateRangeText = () => {
+    if (isDateRange && customStartDate && customEndDate) {
+      return `${customStartDate.format('DD/MM/YYYY')} - ${customEndDate.format('DD/MM/YYYY')}`;
+    } else if (!isDateRange && dateFilter) {
+      return dayjs(dateFilter).format('DD/MM/YYYY');
+    }
+    return "Filter by Date";
   };
 
   const handleFilterSelection = (filterType, value) => {
@@ -1042,18 +1079,18 @@ export default function MessageHistoryPage() {
     <Layout>
       <div className="p-3 sm:p-4 md:p-6 bg-white min-h-screen font-['Exo_2',sans-serif]">
         {/* Enhanced Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-5">
-            <div className="bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white p-3 rounded-2xl shadow-lg">
-              <Mail className="w-6 h-6" />
+        <div className="mb-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white p-2 rounded-xl shadow-md">
+              <Mail className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">
+              <h2 className="text-2xl font-bold text-gray-800">
                 Message History
               </h2>
             </div>
           </div>
-          <p className="text-gray-500 text-base leading-relaxed mb-4">
+          <p className="text-gray-500 text-sm leading-relaxed">
             View and manage all your message conversations in one place. Track user interactions, analyze engagement patterns, and export conversation data effortlessly.
           </p>
         </div>
@@ -1087,98 +1124,23 @@ export default function MessageHistoryPage() {
           </div>
         )}
 
-        {/* Enhanced Action Bar */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-8 shadow-sm">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <div className={`w-2 h-2 rounded-full animate-pulse ${
-                loadingMessages || loadingSessions || loadingEmails 
-                  ? 'bg-yellow-400' 
-                  : 'bg-green-400'
-              }`}></div>
-              <span className="text-sm font-medium text-gray-600">
-                {loadingMessages || loadingSessions || loadingEmails 
-                  ? 'Loading data...' 
-                  : searchTerm 
-                    ? `${messages.length} messages found` 
-                    : `${messages.length} messages loaded`
-                }
-              </span>
-              {(loadingSessions || loadingEmails) && (
-                <RefreshCw className="w-4 h-4 text-gray-400 animate-spin" />
-              )}
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              {searchTerm && (
-                <button
-                  onClick={clearSearch}
-                  className="inline-flex cursor-pointer items-center gap-3 px-6 py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-medium hover:from-red-600 hover:to-red-700 focus:outline-none transition-all duration-300 shadow-md hover:shadow-lg text-base w-fit"
-                >
-                  <X className="w-5 h-5" />
-                  <span>Clear Search</span>
-                </button>
-              )}
-              
-              <button
-                onClick={() => setShowGuests(!showGuests)}
-                className={`inline-flex cursor-pointer items-center gap-3 px-6 py-3 rounded-xl font-medium focus:outline-none transition-all duration-300 shadow-md hover:shadow-lg text-base w-fit ${
-                  showGuests 
-                    ? "bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white border-0" 
-                    : "bg-gray-700 text-gray-300 border border-gray-600 hover:border-[#3a2d9c]"
-                }`}
-              >
-                <Users className="w-5 h-5" />
-                <span>{showGuests ? "Hide Guests" : "Show Guests"}</span>
-              </button>
-              
-            </div>
-          </div>
-        </div>
-
         {/* Enhanced Filter Container */}
-        <div className="flex flex-col lg:flex-row gap-6 mb-8 relative z-50">
-          {/* Enhanced Filter Section */}
-          <div className="flex-1 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 relative group filter-dropdown">
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white p-3 rounded-2xl shadow-lg group-hover:shadow-xl transition-shadow duration-300">
-                    <Filter className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-800 mb-1">Filter Messages</h3>
-                    <p className="text-sm text-gray-600">Filter by contact details</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-lg font-semibold text-gray-800">
-                    {loadingEmails ? (
-                      <div className="flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Loading...</span>
-                      </div>
-                    ) : (
-                      allEmails.length + allPhoneNumbers.length
-                    )}
-                  </div>
-                  <div className="text-sm text-gray-600">contacts available</div>
-                </div>
-              </div>
-            
-            <Menu as="div" className="relative inline-block text-left w-full">
-              <Menu.Button className="w-full inline-flex cursor-pointer items-center justify-between gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white font-semibold hover:from-[#2a1d7c] hover:to-[#015a58] focus:outline-none transition-all duration-300 border border-gray-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <Filter className="w-5 h-5 text-white flex-shrink-0" />
-                  <span className="truncate text-base">
-                    {emailFilter || phoneFilter || guestFilter ? emailFilter || phoneFilter || (guestFilter ? "Guest Messages" : "") : "All Messages"}
+        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Filter by Contact */}
+            <Menu as="div" className="relative inline-block text-left">
+              <Menu.Button className="inline-flex cursor-pointer items-center justify-between gap-2 px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 focus:outline-none transition-all duration-200 shadow-sm hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-sm whitespace-nowrap">
+                    {emailFilter || phoneFilter || guestFilter ? (emailFilter || phoneFilter || "Guest Messages") : "Filter by Contact"}
                   </span>
                 </div>
-                <ChevronDown className="w-5 h-5 text-white flex-shrink-0" />
+                <ChevronDown className="w-4 h-4 flex-shrink-0" />
               </Menu.Button>
 
-              <Menu.Items className="absolute left-0 top-full mt-2 w-full origin-top-left bg-white border border-gray-200 rounded-2xl shadow-xl focus:outline-none z-[10000] animate-in slide-in-from-top-2 duration-200">
-                <div className="py-3 max-h-80 overflow-y-auto overflow-x-hidden">
+              <Menu.Items className="absolute left-0 top-full mt-2 min-w-[250px] origin-top-left bg-white border border-gray-200 rounded-lg shadow-xl focus:outline-none z-[10000]">
+                <div className="py-2 max-h-80 overflow-y-auto">
                   <Menu.Item>
                     {({ active }) => (
                       <button
@@ -1186,83 +1148,78 @@ export default function MessageHistoryPage() {
                           setEmailFilter("");
                           setPhoneFilter("");
                           setGuestFilter(false);
-                          setSeparateSessionFilter("");
+                          setGuestUserFilter("");
                           setPage(1);
                         }}
-                        className={`w-full cursor-pointer text-left px-6 py-3 text-sm transition-all duration-200 rounded-lg mx-2 ${
+                        className={`w-full text-left px-4 py-2 text-sm ${
                           !emailFilter && !phoneFilter && !guestFilter
-                            ? "bg-gradient-to-r from-[#3a2d9c] to-[#017977] font-semibold text-white shadow-md"
+                            ? "bg-[#3a2d9c] text-white"
                             : active
                             ? "bg-gray-100"
-                            : "hover:bg-gray-100"
+                            : ""
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 bg-[#3a2d9c] rounded-full"></div>
-                          <span className={!emailFilter && !phoneFilter && !guestFilter ? "text-white" : "text-gray-800"}>All Messages</span>
-                        </div>
+                        All Contacts
                       </button>
                     )}
                   </Menu.Item>
                   {allEmails.map((email, idx) => (
-                    <Menu.Item key={idx}>
+                    <Menu.Item key={`email-${idx}`}>
                       {({ active }) => (
                         <button
                           onClick={() => handleFilterSelection("email", email)}
-                        className={`w-full text-left px-6 py-3 text-sm transition-all duration-200 rounded-lg mx-2 ${
-                          emailFilter === email
-                            ? "bg-gradient-to-r from-[#3a2d9c] to-[#017977] font-semibold text-white shadow-md"
-                            : active
-                            ? "bg-gray-100"
-                            : "hover:bg-gray-100"
-                        }`}
+                          className={`w-full text-left px-4 py-2 text-sm ${
+                            emailFilter === email
+                              ? "bg-[#3a2d9c] text-white"
+                              : active
+                              ? "bg-gray-100"
+                              : ""
+                          }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <Mail className="w-4 h-4 text-[#3a2d9c]" />
-                            <span className={emailFilter === email ? "text-white" : "text-gray-800"}>{email}</span>
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-3 h-3" />
+                            <span className="truncate">{email}</span>
                           </div>
                         </button>
                       )}
                     </Menu.Item>
                   ))}
                   {allPhoneNumbers.map((phone, idx) => (
-                    <Menu.Item key={idx}>
+                    <Menu.Item key={`phone-${idx}`}>
                       {({ active }) => (
                         <button
                           onClick={() => handleFilterSelection("phone", phone)}
-                        className={`w-full text-left px-6 py-3 text-sm transition-all duration-200 rounded-lg mx-2 ${
-                          phoneFilter === phone
-                            ? "bg-gradient-to-r from-[#3a2d9c] to-[#017977] font-semibold text-white shadow-md"
-                            : active
-                            ? "bg-gray-100"
-                            : "hover:bg-gray-100"
-                        }`}
+                          className={`w-full text-left px-4 py-2 text-sm ${
+                            phoneFilter === phone
+                              ? "bg-[#3a2d9c] text-white"
+                              : active
+                              ? "bg-gray-100"
+                              : ""
+                          }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <User className="w-4 h-4 text-[#3a2d9c]" />
-                            <span className={phoneFilter === phone ? "text-white" : "text-gray-800"}>{phone}</span>
+                          <div className="flex items-center gap-2">
+                            <User className="w-3 h-3" />
+                            <span>{phone}</span>
                           </div>
                         </button>
                       )}
                     </Menu.Item>
                   ))}
-                  
-                  {/* Guest Messages Filter */}
                   <Menu.Item>
                     {({ active }) => (
                       <button
                         onClick={() => handleFilterSelection("guest", true)}
-                        className={`w-full text-left px-6 py-3 text-sm transition-all duration-200 rounded-lg mx-2 ${
+                        className={`w-full text-left px-4 py-2 text-sm ${
                           guestFilter
-                            ? "bg-gradient-to-r from-[#3a2d9c] to-[#017977] font-semibold text-white shadow-md"
+                            ? "bg-[#3a2d9c] text-white"
                             : active
                             ? "bg-gray-100"
-                            : "hover:bg-gray-100"
+                            : ""
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <Users className="w-4 h-4 text-[#3a2d9c]" />
-                          <span className={guestFilter ? "text-white" : "text-gray-800"}>Guest Messages</span>
+                        <div className="flex items-center gap-2">
+                          <Users className="w-3 h-3" />
+                          <span>All Guest Messages</span>
                         </div>
                       </button>
                     )}
@@ -1270,76 +1227,40 @@ export default function MessageHistoryPage() {
                 </div>
               </Menu.Items>
             </Menu>
-            </div>
-          </div>
 
-          {/* Guest User Filter */}
-          <div className="flex-1 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 relative group filter-dropdown">
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white p-3 rounded-2xl shadow-lg group-hover:shadow-xl transition-shadow duration-300">
-                    <Users className="w-6 h-6" />
-                  </div>
-                    <div>
-                    <h3 className="text-lg font-bold text-gray-800 mb-1">Filter by Guest User</h3>
-                    <p className="text-sm text-gray-600">Select a specific guest user to view their messages</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-lg font-semibold text-gray-800">
-                    {loadingSessions ? (
-                      <div className="flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Loading...</span>
-                      </div>
-                    ) : (
-                      allSessions.filter(s => s.is_guest).length
-                    )}
-                  </div>
-                  <div className="text-sm text-gray-600">guest users</div>
-                </div>
-              </div>
-
-            <Menu as="div" className="relative inline-block text-left w-full">
-              <Menu.Button className="w-full inline-flex cursor-pointer items-center justify-between gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white font-semibold hover:from-[#2a1d7c] hover:to-[#015a58] focus:outline-none transition-all duration-300 border border-gray-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <Users className="w-5 h-5 text-white flex-shrink-0" />
-                  <span className="truncate text-base">
+            {/* Filter by Guest User */}
+            <Menu as="div" className="relative inline-block text-left">
+              <Menu.Button className="inline-flex cursor-pointer items-center justify-between gap-2 px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 focus:outline-none transition-all duration-200 shadow-sm hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-sm whitespace-nowrap">
                     {guestUserFilter ? (() => {
                       const selectedSession = allSessions.find(s => s.id === guestUserFilter);
-                      return selectedSession?.guest_number
-                        ? selectedSession.name
-                        : `Guest User`;
-                    })() : "All Guest Users"}
+                      return selectedSession?.guest_number ? selectedSession.name : "Guest User";
+                    })() : "Filter by Guest"}
                   </span>
                 </div>
-                <ChevronDown className="w-5 h-5 text-white flex-shrink-0" />
+                <ChevronDown className="w-4 h-4 flex-shrink-0" />
               </Menu.Button>
 
-              <Menu.Items className="absolute left-0 top-full mt-2 w-full origin-top-left bg-white border border-gray-200 rounded-2xl shadow-xl focus:outline-none z-[10000] animate-in slide-in-from-top-2 duration-200">
-                <div className="py-3 max-h-80 overflow-y-auto overflow-x-hidden">
+              <Menu.Items className="absolute left-0 top-full mt-2 min-w-[200px] origin-top-left bg-white border border-gray-200 rounded-lg shadow-xl focus:outline-none z-[10000]">
+                <div className="py-2 max-h-80 overflow-y-auto">
                   <Menu.Item>
                     {({ active }) => (
                       <button
                         onClick={() => {
                           setGuestUserFilter("");
-                          setEmailFilter("");
-                          setPhoneFilter("");
                           setPage(1);
                         }}
-                        className={`w-full cursor-pointer text-left px-6 py-3 text-sm transition-all duration-200 rounded-lg mx-2 ${
+                        className={`w-full text-left px-4 py-2 text-sm ${
                           !guestUserFilter
-                            ? "bg-gradient-to-r from-[#3a2d9c] to-[#017977] font-semibold text-white shadow-md"
+                            ? "bg-[#3a2d9c] text-white"
                             : active
                             ? "bg-gray-100"
-                            : "hover:bg-gray-100"
+                            : ""
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 bg-[#3a2d9c] rounded-full"></div>
-                          <span className={!guestUserFilter ? "text-white" : "text-gray-800"}>All Guest Users</span>
-                        </div>
+                        All Guests
                       </button>
                     )}
                   </Menu.Item>
@@ -1348,25 +1269,15 @@ export default function MessageHistoryPage() {
                       {({ active }) => (
                         <button
                           onClick={() => handleFilterSelection("guestUser", session.id)}
-                          className={`w-full text-left px-6 py-3 text-sm transition-all duration-200 rounded-lg mx-2 ${
+                          className={`w-full text-left px-4 py-2 text-sm ${
                             guestUserFilter === session.id
-                              ? "bg-gradient-to-r from-[#3a2d9c] to-[#017977] font-semibold text-white shadow-md"
+                              ? "bg-[#3a2d9c] text-white"
                               : active
                               ? "bg-gray-100"
-                              : "hover:bg-gray-100"
+                              : ""
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <Users className={`w-4 h-4 ${guestUserFilter === session.id ? "text-white" : "text-[#3a2d9c]"}`} />
-                            <div className="flex flex-col">
-                              <span className={`font-medium ${guestUserFilter === session.id ? "text-white" : "text-gray-800"}`}>
-                                {session.name}
-                              </span>
-                              <span className={`text-xs ${guestUserFilter === session.id ? "text-gray-300" : "text-gray-500"}`}>
-                                Session: {session.id.substring(0, 8)}...
-                              </span>
-                            </div>
-                          </div>
+                          {session.name}
                         </button>
                       )}
                     </Menu.Item>
@@ -1374,161 +1285,183 @@ export default function MessageHistoryPage() {
                 </div>
               </Menu.Items>
             </Menu>
-            </div>
+
+            {/* Date Filter */}
+            <button
+              onClick={handleDatePickerOpen}
+              className="inline-flex cursor-pointer items-center justify-between gap-2 px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 focus:outline-none transition-all duration-200 shadow-sm hover:shadow-md"
+            >
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 flex-shrink-0" />
+                <span className="text-sm whitespace-nowrap">
+                  {getDateRangeText()}
+                </span>
+              </div>
+              <ChevronDown className="w-4 h-4 flex-shrink-0" />
+            </button>
+
+            {/* Clear Date Filter Button */}
+            {(dateFilter || (customStartDate && customEndDate)) && (
+              <button
+                onClick={clearDateFilter}
+                className="p-2 rounded-lg text-sm font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-all flex items-center gap-1 cursor-pointer"
+                title="Clear date filter"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+
+            <Popover
+              open={Boolean(dateAnchorEl)}
+              anchorEl={dateAnchorEl}
+              onClose={handleDatePickerClose}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'left',
+              }}
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'left',
+              }}
+              sx={{
+                '& .MuiPopover-paper': {
+                  marginTop: '8px',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                }
+              }}
+            >
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: '300px' }}>
+                  <div className="text-lg font-semibold text-gray-900 mb-2">Select Date Range</div>
+
+                  {/* Date Range Toggle */}
+                  <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isDateRange}
+                      onChange={(e) => {
+                        setIsDateRange(e.target.checked);
+                        if (!e.target.checked) {
+                          setCustomStartDate(null);
+                          setCustomEndDate(null);
+                        } else {
+                          setDateFilter("");
+                        }
+                      }}
+                      className="w-4 h-4 text-[#3a2d9c] border-gray-300 rounded focus:ring-[#3a2d9c]"
+                    />
+                    Date Range
+                  </label>
+
+                  {!isDateRange ? (
+                    <DatePicker
+                      label="Select Date"
+                      value={dateFilter ? dayjs(dateFilter) : null}
+                      onChange={(newValue) => setDateFilter(newValue ? newValue.format('YYYY-MM-DD') : '')}
+                      maxDate={dayjs()}
+                      format="DD/MM/YYYY"
+                      slotProps={{
+                        textField: {
+                          size: 'small',
+                          fullWidth: true,
+                        },
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <DatePicker
+                        label="Start Date"
+                        value={customStartDate}
+                        onChange={(newValue) => setCustomStartDate(newValue)}
+                        maxDate={customEndDate || dayjs()}
+                        format="DD/MM/YYYY"
+                        slotProps={{
+                          textField: {
+                            size: 'small',
+                            fullWidth: true,
+                          },
+                        }}
+                      />
+
+                      <DatePicker
+                        label="End Date"
+                        value={customEndDate}
+                        onChange={(newValue) => setCustomEndDate(newValue)}
+                        minDate={customStartDate}
+                        maxDate={dayjs()}
+                        format="DD/MM/YYYY"
+                        slotProps={{
+                          textField: {
+                            size: 'small',
+                            fullWidth: true,
+                          },
+                        }}
+                      />
+                    </>
+                  )}
+
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={handleDatePickerClose}
+                      className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDateFilter}
+                      className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white hover:opacity-90 transition-all"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </Box>
+              </LocalizationProvider>
+            </Popover>
           </div>
         </div>
 
-
-         {/* Search and Date Filter Sections - Side by Side */}
-         <div className="flex flex-col lg:flex-row gap-6 mb-8">
-           {/* Search Bar */}
-           <div className="flex-1 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-             <div className="flex items-center gap-4">
-               <div className="bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white p-3 rounded-2xl shadow-lg">
-                 <Search className="w-6 h-6" />
-               </div>
-               <div className="flex-1">
-                 <h3 className="text-lg font-bold text-gray-800 mb-2">Search Messages</h3>
-                 <p className="text-sm text-gray-600 mb-4">Type a word and click search to find messages</p>
-                 <div className="flex gap-3">
-                   <div className="relative flex-1">
-                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                     <input
-                       type="text"
-                       placeholder="Type any word to search in messages..."
-                       value={searchInput}
-                       onChange={(e) => setSearchInput(e.target.value)}
-                       onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                       className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-[#3a2d9c]/50 focus:border-[#3a2d9c]/50 focus:bg-white transition-all duration-200"
-                     />
-                   </div>
-                   <button
-                     onClick={handleSearch}
-                     disabled={!searchInput.trim()}
-                     className="px-6 py-3 bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white font-medium rounded-xl hover:from-[#2a1d7c] hover:to-[#015a58] focus:outline-none transition-all duration-300 shadow-md hover:shadow-lg disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-                   >
-                     Search
-                   </button>
-                   {searchTerm && (
-                     <button
-                       onClick={clearSearch}
-                       className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-medium rounded-xl hover:from-red-600 hover:to-red-700 focus:outline-none transition-all duration-300 shadow-md hover:shadow-lg"
-                     >
-                       Clear
-                     </button>
-                   )}
-                 </div>
-                 {searchTerm && (
-                   <div className="mt-3 flex items-center gap-2">
-                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                     <span className="text-sm text-gray-600">
-                       Showing messages containing "{searchTerm}"
-                     </span>
-                   </div>
-                 )}
-               </div>
+         {/* Search Bar */}
+         <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
+           <div className="flex items-center gap-3">
+             <div className="bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white p-2 rounded-xl shadow-md">
+               <Search className="w-5 h-5" />
              </div>
-           </div>
-
-           {/* Date Filter Section */}
-           <div className="flex-1 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-             <div className="space-y-6">
-               {/* Header */}
-               <div className="flex items-center gap-4">
-                 <div className="bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white p-3 rounded-2xl shadow-lg">
-                   <Calendar className="w-6 h-6" />
-                 </div>
-                 <div>
-                   <h3 className="text-lg font-bold text-gray-800">Date Filter</h3>
-                   <p className="text-sm text-gray-600">Filter messages by specific date or date range</p>
-                 </div>
-               </div>
-
-               {/* Date Range Toggle */}
-               <div className="flex items-center gap-3">
-                 <label className="flex items-center gap-2 text-sm text-gray-700">
+             <div className="flex-1">
+               <div className="flex gap-2">
+                 <div className="relative flex-1">
+                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                    <input
-                     type="checkbox"
-                     checked={isDateRange}
-                     onChange={(e) => {
-                       setIsDateRange(e.target.checked);
-                       if (!e.target.checked) {
-                         setStartDate("");
-                         setEndDate("");
-                       }
-                     }}
-                     className="w-4 h-4 text-[#3a2d9c] border-gray-300 rounded focus:ring-[#3a2d9c] focus:ring-2"
+                     type="text"
+                     placeholder="Type any word to search in messages..."
+                     value={searchInput}
+                     onChange={(e) => setSearchInput(e.target.value)}
+                     onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                     className="w-full pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-[#3a2d9c]/50 focus:border-[#3a2d9c]/50 focus:bg-white transition-all duration-200"
                    />
-                   Date Range
-                 </label>
-               </div>
-
-               {/* Date Inputs */}
-               <div className="space-y-4">
-                 {!isDateRange ? (
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
-                     <input
-                       type="date"
-                       value={dateFilter}
-                       onChange={(e) => setDateFilter(e.target.value)}
-                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:ring-2 focus:ring-[#3a2d9c]/50 focus:border-[#3a2d9c]/50 focus:bg-white transition-all duration-200"
-                     />
-                   </div>
-                 ) : (
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                       <input
-                         type="date"
-                         value={startDate}
-                         onChange={(e) => setStartDate(e.target.value)}
-                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:ring-2 focus:ring-[#3a2d9c]/50 focus:border-[#3a2d9c]/50 focus:bg-white transition-all duration-200"
-                       />
-                     </div>
-                     <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                       <input
-                         type="date"
-                         value={endDate}
-                         onChange={(e) => setEndDate(e.target.value)}
-                         min={startDate}
-                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:ring-2 focus:ring-[#3a2d9c]/50 focus:border-[#3a2d9c]/50 focus:bg-white transition-all duration-200"
-                       />
-                     </div>
-                   </div>
-                 )}
-               </div>
-
-               {/* Action Buttons */}
-               <div className="flex gap-3">
+                 </div>
                  <button
-                   onClick={handleDateFilter}
-                   disabled={!dateFilter && !startDate && !endDate}
-                   className="px-6 py-3 bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white font-medium rounded-xl hover:from-[#2a1d7c] hover:to-[#015a58] focus:outline-none transition-all duration-300 shadow-md hover:shadow-lg disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                   onClick={handleSearch}
+                   disabled={!searchInput.trim()}
+                   className="px-4 py-2 bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white font-medium text-sm rounded-lg hover:from-[#2a1d7c] hover:to-[#015a58] focus:outline-none transition-all duration-300 shadow-sm hover:shadow-md disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
                  >
-                   Apply Filter
+                   Search
                  </button>
-                 
-                 {(dateFilter || startDate || endDate) && (
+                 {searchTerm && (
                    <button
-                     onClick={clearDateFilter}
-                     className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-medium rounded-xl hover:from-red-600 hover:to-red-700 focus:outline-none transition-all duration-300 shadow-md hover:shadow-lg"
+                     onClick={clearSearch}
+                     className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white font-medium text-sm rounded-lg hover:from-red-600 hover:to-red-700 focus:outline-none transition-all duration-300 shadow-sm hover:shadow-md"
                    >
-                     Clear Filter
+                     Clear
                    </button>
                  )}
                </div>
-
-               {/* Active Filter Display */}
-               {(dateFilter || startDate || endDate) && (
-                 <div className="flex items-center gap-2">
+               {searchTerm && (
+                 <div className="mt-2 flex items-center gap-2">
                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                   <span className="text-sm text-gray-600">
-                     {isDateRange 
-                       ? `Showing messages from ${startDate} to ${endDate}`
-                       : `Showing messages for ${dateFilter}`
-                     }
+                   <span className="text-xs text-gray-600">
+                     Showing messages containing "{searchTerm}"
                    </span>
                  </div>
                )}
@@ -1546,30 +1479,36 @@ export default function MessageHistoryPage() {
               <table className="w-full text-xs md:text-sm lg:text-base text-left text-gray-800">
                 <thead className="bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white uppercase text-xs md:text-sm font-semibold">
                 <tr>
-                  <th scope="col" className="w-20 md:w-32 lg:w-40 px-2 md:px-4 py-3 md:py-4 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <Clock className="w-3 h-3 md:w-4 md:h-4" />
-                      <span className="hidden sm:inline">Time</span>
-                    </div>
-                  </th>
                   <th scope="col" className="w-24 md:w-32 lg:w-40 px-2 md:px-4 py-3 md:py-4 text-center">
                     <div className="flex items-center justify-center gap-1">
-                      <User className="w-3 h-3 md:w-4 md:h-4" />
+                      <User className="w-4 h-4 md:w-5 md:h-5" />
                       <span className="hidden sm:inline">Sender</span>
                     </div>
                   </th>
                   <th scope="col" className="px-2 md:px-4 py-3 md:py-4">
-                    <span className="hidden sm:inline">Message</span>
-                    <span className="sm:hidden">Msg</span>
+                    <div className="flex items-center gap-1">
+                      <Mail className="w-4 h-4 md:w-5 md:h-5" />
+                      <span className="hidden sm:inline">Message</span>
+                      <span className="sm:hidden">Msg</span>
+                    </div>
                   </th>
                   <th scope="col" className="w-20 md:w-32 lg:w-36 px-2 md:px-4 py-3 md:py-4 text-center">
                     <div className="flex items-center justify-center gap-1">
-                      <Mail className="w-3 h-3 md:w-4 md:h-4" />
+                      <Mail className="w-4 h-4 md:w-5 md:h-5" />
                       <span className="hidden sm:inline">Contact</span>
                     </div>
                   </th>
+                  <th scope="col" className="w-20 md:w-32 lg:w-40 px-2 md:px-4 py-3 md:py-4 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Calendar className="w-4 h-4 md:w-5 md:h-5" />
+                      <span className="hidden sm:inline">Date</span>
+                    </div>
+                  </th>
                   <th scope="col" className="w-16 md:w-20 lg:w-24 px-2 md:px-4 py-3 md:py-4 text-center">
-                    Action
+                    <div className="flex items-center justify-center gap-1">
+                      <Eye className="w-4 h-4 md:w-5 md:h-5" />
+                      <span className="hidden sm:inline">Action</span>
+                    </div>
                   </th>
                 </tr>
               </thead>
@@ -1595,35 +1534,18 @@ export default function MessageHistoryPage() {
                       onClick={() => openChatModal(contact)}
                       className="hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 cursor-pointer transition-all duration-300 group"
                     >
-                      <td className="w-20 md:w-32 lg:w-40 px-2 md:px-4 py-3 md:py-4 text-center text-gray-600">
-                        <div className="text-xs md:text-sm">
-                          {new Date(msg.timestamp).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "2-digit",
-                          })}
-                        </div>
-                        <div className="text-xs md:text-sm text-gray-400">
-                          {new Date(msg.timestamp).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                      </td>
                       <td className="w-24 md:w-32 lg:w-40 px-2 md:px-4 py-3 md:py-4 text-center">
                         <div className="flex flex-col items-center gap-1 md:gap-2">
-                          {isGuest ? (
+                          {msg.sender === 'bot' ? (
                             <>
-                              <span className="px-2 py-1 bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white text-xs md:text-sm font-medium rounded-full shadow-md">
-                                {getGuestDisplayName(msg)}
-                              </span>
-                              <span className="text-gray-600 text-xs md:text-sm">{msg.sender}</span>
+                              <Brain className="w-5 h-5 md:w-6 md:h-6 text-[#3a2d9c]" />
+                              <span className="text-gray-600 text-xs md:text-sm font-medium">agent</span>
                             </>
                           ) : (
-                            <div className="flex flex-col items-center gap-1 md:gap-2">
-                              <div className="w-2 h-2 md:w-3 md:h-3 bg-green-400 rounded-full"></div>
-                              <span className="text-gray-600 text-xs md:text-sm">{msg.sender}</span>
-                            </div>
+                            <>
+                              <User className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
+                              <span className="text-gray-600 text-xs md:text-sm font-medium">user</span>
+                            </>
                           )}
                         </div>
                       </td>
@@ -1657,6 +1579,22 @@ export default function MessageHistoryPage() {
                             </span>
                           </div>
                         )}
+                      </td>
+                      <td className="w-20 md:w-32 lg:w-40 px-2 md:px-4 py-3 md:py-4 text-center text-gray-600">
+                        <div className="text-xs md:text-sm">
+                          {new Date(msg.timestamp).toLocaleDateString("en-US", {
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </div>
+                        <div className="text-xs md:text-sm text-gray-400">
+                          at {new Date(msg.timestamp).toLocaleTimeString("en-US", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          })}
+                        </div>
                       </td>
                       <td className="w-16 md:w-20 lg:w-24 px-2 md:px-4 py-3 md:py-4 text-center">
                         <button

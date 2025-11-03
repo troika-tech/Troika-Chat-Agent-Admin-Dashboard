@@ -83,9 +83,60 @@ export const fetchUniqueEmailsAndPhones = () => {
   return api.get('/user/messages/unique-emails-and-phones');
 };
 
-export const fetchUserSessions = () => {
+export const fetchUserSessions = (params = {}) => {
   console.log("🔍 fetchUserSessions API function called");
-  return api.get('/user/sessions');
+  const queryParams = new URLSearchParams();
+  Object.keys(params).forEach(key => {
+    if (params[key] !== undefined && params[key] !== '') {
+      queryParams.append(key, params[key]);
+    }
+  });
+  const queryString = queryParams.toString();
+  return api.get(`/user/sessions${queryString ? `?${queryString}` : ''}`);
+};
+
+export const fetchUserAnalytics = (params = {}) => {
+  const queryParams = new URLSearchParams();
+  Object.keys(params).forEach(key => {
+    if (params[key] !== undefined && params[key] !== '') {
+      queryParams.append(key, params[key]);
+    }
+  });
+  const queryString = queryParams.toString();
+  return api.get(`/user/analytics${queryString ? `?${queryString}` : ''}`);
+};
+
+export const fetchUserLeads = (params = {}) => {
+  const queryParams = new URLSearchParams();
+  Object.keys(params).forEach(key => {
+    if (params[key] !== undefined && params[key] !== '') {
+      queryParams.append(key, params[key]);
+    }
+  });
+  const queryString = queryParams.toString();
+  return api.get(`/user/leads${queryString ? `?${queryString}` : ''}`);
+};
+
+export const fetchTopUsers = (params = {}) => {
+  const queryParams = new URLSearchParams();
+  Object.keys(params).forEach(key => {
+    if (params[key] !== undefined && params[key] !== '') {
+      queryParams.append(key, params[key]);
+    }
+  });
+  const queryString = queryParams.toString();
+  return api.get(`/user/top-users${queryString ? `?${queryString}` : ''}`);
+};
+
+export const fetchUserChatHistory = (params = {}) => {
+  const queryParams = new URLSearchParams();
+  Object.keys(params).forEach(key => {
+    if (params[key] !== undefined && params[key] !== '') {
+      queryParams.append(key, params[key]);
+    }
+  });
+  const queryString = queryParams.toString();
+  return api.get(`/user/chat-history${queryString ? `?${queryString}` : ''}`);
 };
 
 // Admin API endpoints

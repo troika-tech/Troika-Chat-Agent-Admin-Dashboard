@@ -3,15 +3,16 @@ import { BarChart3, PieChart, TrendingUp, Users, MessageSquare, Activity } from 
 
 const DynamicCharts = ({ plan, usage, company, analytics }) => {
   // Calculate chart data based on plan and usage
-  const userLimit = plan?.max_users || 200;
+  const userLimit = plan?.max_users || 2000;
   const userPercentage = Math.round(((usage?.unique_users || 0) / userLimit) * 100);
-  
-  // For messages, we'll use a reasonable limit based on the plan or current usage
-  // Since there's no max_messages in plan, we'll use a dynamic limit
-  const messageLimit = Math.max(1000, (usage?.total_messages || 0) * 2); // Dynamic limit based on current usage
-  const messagePercentage = Math.round(((usage?.total_messages || 0) / messageLimit) * 100);
-  
-  // Plan usage data for pie chart - show both users and messages
+
+  // Calculate days used and remaining for current plan
+  const totalDays = plan?.duration_days || 365;
+  const daysRemaining = plan?.days_remaining || 0;
+  const daysUsed = totalDays - daysRemaining;
+  const daysPercentage = Math.round((daysUsed / totalDays) * 100);
+
+  // Plan usage data for pie chart - show both users and days
   const planUsageData = [
     {
       name: 'Users Used',
@@ -22,12 +23,12 @@ const DynamicCharts = ({ plan, usage, company, analytics }) => {
       label: 'Users'
     },
     {
-      name: 'Messages Used',
-      value: usage?.total_messages || 0,
-      maxValue: messageLimit,
-      percentage: messagePercentage,
+      name: 'Days Used',
+      value: daysUsed,
+      maxValue: totalDays,
+      percentage: daysPercentage,
       color: '#10B981',
-      label: 'Messages'
+      label: 'Days'
     }
   ];
 
@@ -119,7 +120,7 @@ const DynamicCharts = ({ plan, usage, company, analytics }) => {
                 strokeDasharray={`${2 * Math.PI * 40}`}
                 strokeDashoffset={2 * Math.PI * 40 * (1 - userPercentage / 100)}
               />
-              {/* Messages progress circle (inner) */}
+              {/* Days progress circle (inner) */}
               <circle
                 cx="50"
                 cy="50"
@@ -129,17 +130,17 @@ const DynamicCharts = ({ plan, usage, company, analytics }) => {
                 strokeWidth="6"
                 strokeLinecap="round"
                 strokeDasharray={`${2 * Math.PI * 28}`}
-                strokeDashoffset={2 * Math.PI * 28 * (1 - messagePercentage / 100)}
+                strokeDashoffset={2 * Math.PI * 28 * (1 - daysPercentage / 100)}
               />
             </svg>
-            
+
             {/* Center text */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-600 mb-1">
-                  {messagePercentage}%
+                  {daysPercentage}%
                 </div>
-                <div className="text-base text-gray-600">Messages</div>
+                <div className="text-base text-gray-600">Days</div>
               </div>
             </div>
           </div>

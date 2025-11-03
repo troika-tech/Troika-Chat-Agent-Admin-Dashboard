@@ -86,7 +86,7 @@ export default function DownloadReportPage() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const filename = `chatbot_report_${Date.now()}.pdf`;
+      const filename = `agent_report_${Date.now()}.pdf`;
       link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();

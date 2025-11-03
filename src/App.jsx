@@ -17,6 +17,7 @@ import DownloadReportPage from "./pages/DownloadReportPage";
 import EnquiriesPage from "./pages/EnquiresPage";
 import ClientConfigPage from "./pages/ClientConfigPage";
 import LeadsPage from "./pages/LeadsPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 import ApiTest from "./components/ApiTest";
 import "./App.css";
 import CustomizePage from "./pages/CustomizePage";
@@ -102,6 +103,14 @@ function App() {
           element={
             <ProtectedRoute role="user">
               <EnquiriesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user/analytics"
+          element={
+            <ProtectedRoute role="user">
+              <AnalyticsPage />
             </ProtectedRoute>
           }
         />

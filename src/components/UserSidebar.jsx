@@ -1,10 +1,12 @@
 import React from "react";
-import { 
-  LayoutDashboard, 
-  MessageSquare, 
+import {
+  LayoutDashboard,
+  MessageSquare,
   Download,
   FileDown,
-  LogOut
+  LogOut,
+  BarChart3,
+  Phone
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
@@ -17,15 +19,25 @@ export default function Sidebar({ chatbotId, isOpen, onClose, company }) {
       path: "/user/dashboard",
     },
     {
+      name: "Analytics",
+      icon: <BarChart3 size={18} />,
+      path: "/user/analytics",
+    },
+    {
       name: "Message History",
       icon: <MessageSquare size={18} />,
       path: "/user/message-history",
     },
     {
-      name: "Download Data",
-      icon: <Download size={18} />,
-      path: "/user/download-data",
+      name: "Leads",
+      icon: <Phone size={18} />,
+      path: "/user/leads",
     },
+    // {
+    //   name: "Download Data",
+    //   icon: <Download size={18} />,
+    //   path: "/user/download-data",
+    // },
     {
       name: "Download Report",
       icon: <FileDown size={18} />,
