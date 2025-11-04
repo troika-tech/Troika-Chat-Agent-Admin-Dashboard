@@ -6,7 +6,8 @@ import {
   FileDown,
   LogOut,
   BarChart3,
-  Phone
+  Phone,
+  Users
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
@@ -28,10 +29,15 @@ export default function Sidebar({ chatbotId, isOpen, onClose, company }) {
       icon: <MessageSquare size={18} />,
       path: "/user/message-history",
     },
+    // {
+    //   name: "Leads",
+    //   icon: <Phone size={18} />,
+    //   path: "/user/leads",
+    // },
     {
-      name: "Leads",
-      icon: <Phone size={18} />,
-      path: "/user/leads",
+      name: "Collected Leads",
+      icon: <Users size={18} />,
+      path: "/user/collected-leads",
     },
     // {
     //   name: "Download Data",

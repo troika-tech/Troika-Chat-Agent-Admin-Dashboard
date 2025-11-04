@@ -117,6 +117,17 @@ export const fetchUserLeads = (params = {}) => {
   return api.get(`/user/leads${queryString ? `?${queryString}` : ''}`);
 };
 
+export const fetchCollectedLeads = (params = {}) => {
+  const queryParams = new URLSearchParams();
+  Object.keys(params).forEach(key => {
+    if (params[key] !== undefined && params[key] !== '') {
+      queryParams.append(key, params[key]);
+    }
+  });
+  const queryString = queryParams.toString();
+  return api.get(`/user/collected-leads${queryString ? `?${queryString}` : ''}`);
+};
+
 export const fetchTopUsers = (params = {}) => {
   const queryParams = new URLSearchParams();
   Object.keys(params).forEach(key => {

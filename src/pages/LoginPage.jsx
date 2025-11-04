@@ -45,7 +45,7 @@ const LoginPage = () => {
             Troika Tech
           </h1>
           <p className="text-gray-600 mt-2 text-sm">
-            Chatbot Management Dashboard
+            AI Agent Management Dashboard
           </p>
         </div>
 
