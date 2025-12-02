@@ -25,6 +25,7 @@ import CustomizePage from "./pages/CustomizePage";
 import ManageChatbotUIPage from "./pages/ManageChatbotUIPage";
 import ManageSidebarPage from "./pages/ManageSidebarPage";
 import EmbedScriptPage from "./pages/EmbedScriptPage";
+import CreditHistoryPage from "./pages/CreditHistoryPage";
 import AccountDeactivatedPage from "./pages/AccountDeactivatedPage";
 
 function App() {
@@ -55,6 +56,7 @@ function App() {
           <Route path="manage-chatbot-ui" element={<ManageChatbotUIPage />} />
           <Route path="manage-sidebar" element={<ManageSidebarPage />} />
           <Route path="embed-script" element={<EmbedScriptPage />} />
+          <Route path="credit-history" element={<CreditHistoryPage />} />
           <Route
             path="manage-admins"
             element={

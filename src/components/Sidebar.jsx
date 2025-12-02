@@ -11,6 +11,7 @@ import {
   X,
   Palette,
   Code,
+  History,
 } from "lucide-react";
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -91,6 +92,11 @@ const Sidebar = ({ isOpen, onClose }) => {
           <NavLink to="/dashboard/embed-script" className={navItemClass}>
             <Code className="mr-3 h-5 w-5" />
             Embed Script
+          </NavLink>
+
+          <NavLink to="/dashboard/credit-history" className={navItemClass}>
+            <History className="mr-3 h-5 w-5" />
+            Credit History
           </NavLink>
 
           {/* This link is now only visible to super admins */}
