@@ -30,8 +30,19 @@ import {
   updateCustomNavigationItem,
   deleteCustomNavigationItem,
   updateChatbotSidebarCustomNav,
+  getAuthConfigAdmin,
+  updateAuthConfig,
+  getIntentConfigAdmin,
+  updateIntentConfig,
+  getTranscriptConfigAdmin,
+  updateTranscriptConfig,
 } from "../services/api";
-import { Image, Type, Loader2, MessageSquare, Phone, Settings, Calendar, Mail, Plus, Edit2, Trash2, X, Share2, Sparkles, Heading, Navigation, Monitor, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { Image, Type, Loader2, MessageSquare, Phone, Settings, Calendar, Mail, Plus, Edit2, Trash2, X, Share2, Sparkles, Heading, Navigation, Monitor, ArrowLeft, Eye, EyeOff, Search, Shield, FileText } from "lucide-react";
+import AISensyConfigFields from "../components/auth/AISensyConfigFields";
+import TwilioConfigFields from "../components/auth/TwilioConfigFields";
+import MessageBirdConfigFields from "../components/auth/MessageBirdConfigFields";
+import Dialog360ConfigFields from "../components/auth/Dialog360ConfigFields";
+import GupshupConfigFields from "../components/auth/GupshupConfigFields";
 import IconSelector from "../components/IconSelector";
 import api from "../services/api";
 
@@ -65,6 +76,8 @@ const ManageChatbotUIPage = () => {
   const [editingPhone, setEditingPhone] = useState({});
   const [phoneValues, setPhoneValues] = useState({});
   const [updatingPhone, setUpdatingPhone] = useState({});
+  // Search state
+  const [search, setSearch] = useState("");
   
   // Debug: Log canDecryptPassword state changes
   useEffect(() => {
@@ -116,6 +129,55 @@ const ManageChatbotUIPage = () => {
   const [updatingWhatsApp, setUpdatingWhatsApp] = useState(false);
   const [updatingCall, setUpdatingCall] = useState(false);
   const [updatingCalendly, setUpdatingCalendly] = useState(false);
+  
+  // Authentication configuration state
+  const [authConfig, setAuthConfig] = useState({
+    auth_enabled: false,
+    auth_provider: 'aisensy',
+    auth_trigger_message_count: 1,
+    provider_config: {},
+    auth_phone_prompt_text: "To continue chat, please type your whatsapp number.",
+    auth_otp_prompt_text: "I've sent an OTP to your whatsapp number. Please enter the 6-digit OTP code.",
+    auth_success_text: "Great! You're verified. How can I help you?",
+  });
+  const [updatingAuth, setUpdatingAuth] = useState(false);
+  const [showAuthPassword, setShowAuthPassword] = useState({
+    aisensy_api_key: false,
+    twilio_account_sid: false,
+    twilio_auth_token: false,
+    messagebird_api_key: false,
+    dialog360_api_key: false,
+    gupshup_api_key: false,
+  });
+
+  // Intent configuration state
+  const [intentConfig, setIntentConfig] = useState({
+    enabled: false,
+    keywords: [],
+    proposal_template_name: "",
+    proposal_campaign_name: "",
+    confirmation_prompt_text: "Would you like me to send the proposal to your WhatsApp number?",
+    success_message: "✅ Proposal sent to your WhatsApp number!",
+    toast_message: "Proposal sent successfully! 📱",
+    positive_responses: ["yes", "yep", "sure", "ok", "send it", "please", "go ahead", "yes please"],
+    negative_responses: ["no", "not now", "later", "maybe later", "not yet"],
+    timeout_minutes: 5,
+  });
+  const [intentConfigLoading, setIntentConfigLoading] = useState(false);
+  const [updatingIntent, setUpdatingIntent] = useState(false);
+  const [newKeyword, setNewKeyword] = useState("");
+
+  // Transcript configuration state
+  const [transcriptConfig, setTranscriptConfig] = useState({
+    enabled: false,
+    template_name: "",
+    campaign_name: "",
+    company_name: "",
+    inactivity_timeout_ms: null,
+    pdf_filename: "Chat-Summary.pdf",
+  });
+  const [transcriptConfigLoading, setTranscriptConfigLoading] = useState(false);
+  const [updatingTranscript, setUpdatingTranscript] = useState(false);
   const [updatingEmail, setUpdatingEmail] = useState(false);
   const [updatingSocial, setUpdatingSocial] = useState(false);
   const [updatingBranding, setUpdatingBranding] = useState(false);
@@ -191,6 +253,8 @@ const ManageChatbotUIPage = () => {
     if (selectedChatbotId) {
       fetchUIConfig(selectedChatbotId);
       fetchSidebarConfig(selectedChatbotId);
+      fetchAuthConfig(selectedChatbotId);
+      fetchIntentConfig(selectedChatbotId);
       setActiveSection("avatar"); // Reset to first tab
     } else {
       setAvatarUrl("");
@@ -219,6 +283,15 @@ const ManageChatbotUIPage = () => {
   useEffect(() => {
     if (activeSection === "custom-nav" && selectedChatbotId) {
       fetchCustomNavigationItems(selectedChatbotId);
+    }
+  }, [activeSection, selectedChatbotId]);
+
+  useEffect(() => {
+    if (activeSection === "intent" && selectedChatbotId) {
+      fetchIntentConfig(selectedChatbotId);
+    }
+    if (activeSection === "transcript" && selectedChatbotId) {
+      fetchTranscriptConfig(selectedChatbotId);
     }
   }, [activeSection, selectedChatbotId]);
 
@@ -607,6 +680,185 @@ const ManageChatbotUIPage = () => {
     } finally {
       setLoadingConfig(false);
     }
+  };
+
+  const fetchAuthConfig = async (chatbotId) => {
+    try {
+      const response = await getAuthConfigAdmin(chatbotId);
+      const config = response.data.data || response.data;
+      setAuthConfig({
+        auth_enabled: config.auth_enabled || false,
+        auth_provider: config.auth_provider || 'aisensy',
+        auth_trigger_message_count: config.auth_trigger_message_count || 1,
+        provider_config: config.provider_config || {},
+        auth_phone_prompt_text: config.auth_phone_prompt_text || "To continue chat, please type your whatsapp number.",
+        auth_otp_prompt_text: config.auth_otp_prompt_text || "I've sent an OTP to your whatsapp number. Please enter the 6-digit OTP code.",
+        auth_success_text: config.auth_success_text || "Great! You're verified. How can I help you?",
+      });
+    } catch (error) {
+      console.error("Error fetching auth config:", error);
+      // Set defaults on error
+      setAuthConfig({
+        auth_enabled: false,
+        auth_provider: 'aisensy',
+        auth_trigger_message_count: 1,
+        provider_config: {},
+        auth_phone_prompt_text: "To continue chat, please type your whatsapp number.",
+        auth_otp_prompt_text: "I've sent an OTP to your whatsapp number. Please enter the 6-digit OTP code.",
+        auth_success_text: "Great! You're verified. How can I help you?",
+      });
+    }
+  };
+
+  const fetchIntentConfig = async (chatbotId) => {
+    try {
+      setIntentConfigLoading(true);
+      const response = await getIntentConfigAdmin(chatbotId);
+      const config = response.data.data || response.data;
+      setIntentConfig({
+        enabled: config.enabled || false,
+        keywords: config.keywords || [],
+        proposal_template_name: config.proposal_template_name || "",
+        proposal_campaign_name: config.proposal_campaign_name || "",
+        confirmation_prompt_text: config.confirmation_prompt_text || "Would you like me to send the proposal to your WhatsApp number?",
+        success_message: config.success_message || "✅ Proposal sent to your WhatsApp number!",
+        toast_message: config.toast_message || "Proposal sent successfully! 📱",
+        positive_responses: config.positive_responses || ["yes", "yep", "sure", "ok", "send it", "please", "go ahead", "yes please"],
+        negative_responses: config.negative_responses || ["no", "not now", "later", "maybe later", "not yet"],
+        timeout_minutes: config.timeout_minutes || 5,
+      });
+    } catch (error) {
+      console.error("Error fetching intent config:", error);
+      // Set defaults on error
+      setIntentConfig({
+        enabled: false,
+        keywords: [],
+        proposal_template_name: "",
+        proposal_campaign_name: "",
+        confirmation_prompt_text: "Would you like me to send the proposal to your WhatsApp number?",
+        success_message: "✅ Proposal sent to your WhatsApp number!",
+        toast_message: "Proposal sent successfully! 📱",
+        positive_responses: ["yes", "yep", "sure", "ok", "send it", "please", "go ahead", "yes please"],
+        negative_responses: ["no", "not now", "later", "maybe later", "not yet"],
+        timeout_minutes: 5,
+      });
+    } finally {
+      setIntentConfigLoading(false);
+    }
+  };
+
+  const handleUpdateIntentConfig = async () => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    try {
+      setUpdatingIntent(true);
+      await updateIntentConfig(selectedChatbotId, intentConfig);
+      toast.success("Intent configuration updated successfully! ✅");
+    } catch (error) {
+      console.error("Error updating intent config:", error);
+      toast.error(error.response?.data?.message || "Failed to update intent configuration");
+    } finally {
+      setUpdatingIntent(false);
+    }
+  };
+
+  const fetchTranscriptConfig = async (chatbotId) => {
+    if (!chatbotId) return;
+    
+    setTranscriptConfigLoading(true);
+    try {
+      const response = await getTranscriptConfigAdmin(chatbotId);
+      const config = response.data.data || response.data;
+      console.log('[Transcript Config] Fetched config:', config);
+      setTranscriptConfig({
+        enabled: Boolean(config.enabled), // Explicitly convert to boolean
+        template_name: config.template_name || "",
+        campaign_name: config.campaign_name || "",
+        company_name: config.company_name || "",
+        inactivity_timeout_ms: config.inactivity_timeout_ms || null,
+        pdf_filename: config.pdf_filename || "Chat-Summary.pdf",
+      });
+    } catch (error) {
+      console.error("Error fetching transcript config:", error);
+      // Set defaults on error
+      setTranscriptConfig({
+        enabled: false,
+        template_name: "",
+        campaign_name: "",
+        company_name: "",
+        inactivity_timeout_ms: null,
+        pdf_filename: "Chat-Summary.pdf",
+      });
+    } finally {
+      setTranscriptConfigLoading(false);
+    }
+  };
+
+  const handleUpdateTranscriptConfig = async () => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    // Validate required fields when enabled
+    if (transcriptConfig.enabled) {
+      if (!transcriptConfig.template_name?.trim()) {
+        toast.error("Template name is required when transcript is enabled");
+        return;
+      }
+      if (!transcriptConfig.campaign_name?.trim()) {
+        toast.error("Campaign name is required when transcript is enabled");
+        return;
+      }
+      if (!transcriptConfig.company_name?.trim()) {
+        toast.error("Company name is required when transcript is enabled");
+        return;
+      }
+      if (!transcriptConfig.inactivity_timeout_ms || transcriptConfig.inactivity_timeout_ms < 1000) {
+        toast.error("Inactivity timeout must be at least 1000ms (1 second)");
+        return;
+      }
+    }
+
+    try {
+      setUpdatingTranscript(true);
+      console.log('[Transcript Config] Updating with config:', transcriptConfig);
+      await updateTranscriptConfig(selectedChatbotId, transcriptConfig);
+      toast.success("Transcript configuration updated successfully! ✅");
+      // Refetch to ensure state is in sync
+      await fetchTranscriptConfig(selectedChatbotId);
+    } catch (error) {
+      console.error("Error updating transcript config:", error);
+      toast.error(error.response?.data?.message || "Failed to update transcript configuration");
+    } finally {
+      setUpdatingTranscript(false);
+    }
+  };
+
+  const handleAddKeyword = () => {
+    if (!newKeyword.trim()) {
+      toast.error("Please enter a keyword");
+      return;
+    }
+    if (intentConfig.keywords.includes(newKeyword.trim())) {
+      toast.error("Keyword already exists");
+      return;
+    }
+    setIntentConfig({
+      ...intentConfig,
+      keywords: [...intentConfig.keywords, newKeyword.trim()],
+    });
+    setNewKeyword("");
+  };
+
+  const handleRemoveKeyword = (keyword) => {
+    setIntentConfig({
+      ...intentConfig,
+      keywords: intentConfig.keywords.filter((k) => k !== keyword),
+    });
   };
 
   const fetchSidebarConfig = async (chatbotId) => {
@@ -1287,6 +1539,39 @@ const ManageChatbotUIPage = () => {
                   >
                     <Mail className="h-4 w-4 mr-2" />
                     Email
+                </button>
+                <button
+                    onClick={() => setActiveSection("authentication")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "authentication"
+                        ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-indigo-500"
+                    }`}
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    Authentication
+                </button>
+                <button
+                    onClick={() => setActiveSection("intent")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "intent"
+                        ? "bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-orange-500"
+                    }`}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Intent & Proposals
+                </button>
+                <button
+                    onClick={() => setActiveSection("transcript")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "transcript"
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-blue-500"
+                    }`}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Transcript
                 </button>
                 <button
                     onClick={() => setActiveSection("social")}
@@ -2259,6 +2544,566 @@ const ManageChatbotUIPage = () => {
                 </div>
               )}
 
+              {/* Authentication Configuration Section */}
+              {/* Intent & Proposals Configuration Section */}
+              {activeSection === "intent" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <MessageSquare className="h-6 w-6 text-orange-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">Intent & Proposals Configuration</h2>
+                  </div>
+
+                  {intentConfigLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-orange-600" />
+                      <span className="ml-2 text-gray-600">Loading intent configuration...</span>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Enable Intent Detection Toggle */}
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <label className="text-lg font-semibold text-gray-800">Enable Intent-Based Proposals</label>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Automatically detect when users ask for proposals and send them via WhatsApp
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setIntentConfig({ ...intentConfig, enabled: !intentConfig.enabled })}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              intentConfig.enabled ? "bg-orange-600" : "bg-gray-300"
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                intentConfig.enabled ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+
+                      {intentConfig.enabled && (
+                        <div className="space-y-6">
+                          {/* Keywords Management */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Intent Keywords <span className="text-red-500">*</span>
+                            </label>
+                            <p className="text-xs text-gray-500 mb-3">
+                              Add keywords that trigger proposal requests (e.g., "proposal", "quote", "pricing")
+                            </p>
+                            <div className="flex gap-2 mb-3">
+                              <input
+                                type="text"
+                                value={newKeyword}
+                                onChange={(e) => setNewKeyword(e.target.value)}
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleAddKeyword();
+                                  }
+                                }}
+                                placeholder="Enter keyword (e.g., proposal)"
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                              />
+                              <button
+                                onClick={handleAddKeyword}
+                                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            </div>
+                            {intentConfig.keywords.length > 0 ? (
+                              <div className="flex flex-wrap gap-2">
+                                {intentConfig.keywords.map((keyword, index) => (
+                                  <span
+                                    key={index}
+                                    className="inline-flex items-center px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm"
+                                  >
+                                    {keyword}
+                                    <button
+                                      onClick={() => handleRemoveKeyword(keyword)}
+                                      className="ml-2 text-orange-600 hover:text-orange-800"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-500 italic">No keywords added yet</p>
+                            )}
+                          </div>
+
+                          {/* Proposal Campaign Configuration */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Proposal Campaign Name
+                            </label>
+                            <input
+                              type="text"
+                              value={intentConfig.proposal_campaign_name}
+                              onChange={(e) => setIntentConfig({ ...intentConfig, proposal_campaign_name: e.target.value })}
+                              placeholder="proposalsending"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                              Must match the campaign name in your WhatsApp provider dashboard
+                            </p>
+                          </div>
+
+                          {/* Confirmation Prompt Text */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Confirmation Prompt Text
+                            </label>
+                            <textarea
+                              value={intentConfig.confirmation_prompt_text}
+                              onChange={(e) => setIntentConfig({ ...intentConfig, confirmation_prompt_text: e.target.value })}
+                              placeholder="Would you like me to send the proposal to your WhatsApp number?"
+                              rows={2}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
+
+                          {/* Success Message */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Success Message
+                            </label>
+                            <textarea
+                              value={intentConfig.success_message}
+                              onChange={(e) => setIntentConfig({ ...intentConfig, success_message: e.target.value })}
+                              placeholder="✅ Proposal sent to your WhatsApp number!"
+                              rows={2}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
+
+                          {/* Toast Message */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Toast Notification Message
+                            </label>
+                            <input
+                              type="text"
+                              value={intentConfig.toast_message}
+                              onChange={(e) => setIntentConfig({ ...intentConfig, toast_message: e.target.value })}
+                              placeholder="Proposal sent successfully! 📱"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
+
+                          {/* Save Button */}
+                          <div className="flex justify-end pt-4 border-t">
+                            <button
+                              onClick={handleUpdateIntentConfig}
+                              disabled={updatingIntent}
+                              className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                            >
+                              {updatingIntent ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Updating...
+                                </>
+                              ) : (
+                                "Update Intent Configuration"
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Transcript Configuration Section */}
+              {activeSection === "transcript" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <FileText className="h-6 w-6 text-blue-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">Conversation Transcript Configuration</h2>
+                  </div>
+
+                  {transcriptConfigLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                      <span className="ml-2 text-gray-600">Loading transcript configuration...</span>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Enable Transcript Toggle */}
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <label className="text-lg font-semibold text-gray-800">Enable Conversation Transcript</label>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Automatically send conversation transcripts as PDF via WhatsApp after inactivity
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setTranscriptConfig({ ...transcriptConfig, enabled: !transcriptConfig.enabled })}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              transcriptConfig.enabled ? "bg-blue-600" : "bg-gray-300"
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                transcriptConfig.enabled ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+
+                      {transcriptConfig.enabled && (
+                        <div className="space-y-6 border-t pt-6">
+                          {/* Template Name */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              WhatsApp Template Name <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={transcriptConfig.template_name}
+                              onChange={(e) => setTranscriptConfig({ ...transcriptConfig, template_name: e.target.value })}
+                              placeholder="chatsummarytemp"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                              Template name configured in your WhatsApp provider dashboard
+                            </p>
+                          </div>
+
+                          {/* Campaign Name */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              WhatsApp Campaign Name <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={transcriptConfig.campaign_name}
+                              onChange={(e) => setTranscriptConfig({ ...transcriptConfig, campaign_name: e.target.value })}
+                              placeholder="chatsummarytempsumm"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                              Campaign name configured in your WhatsApp provider dashboard
+                            </p>
+                          </div>
+
+                          {/* Company Name */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Company Name <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={transcriptConfig.company_name}
+                              onChange={(e) => setTranscriptConfig({ ...transcriptConfig, company_name: e.target.value })}
+                              placeholder="Troika Tech Services"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                              Company name to include in the transcript template
+                            </p>
+                          </div>
+
+                          {/* Inactivity Timeout */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Inactivity Timeout (milliseconds) <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              value={transcriptConfig.inactivity_timeout_ms || ""}
+                              onChange={(e) => setTranscriptConfig({ ...transcriptConfig, inactivity_timeout_ms: parseInt(e.target.value) || null })}
+                              placeholder="30000"
+                              min="1000"
+                              step="1000"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                              Time in milliseconds before sending transcript (minimum: 1000ms = 1 second)
+                            </p>
+                          </div>
+
+                          {/* PDF Filename */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              PDF Filename
+                            </label>
+                            <input
+                              type="text"
+                              value={transcriptConfig.pdf_filename}
+                              onChange={(e) => setTranscriptConfig({ ...transcriptConfig, pdf_filename: e.target.value })}
+                              placeholder="Chat-Summary.pdf"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                              Filename for the generated PDF transcript
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Save Button - Always visible */}
+                      <div className="flex justify-end pt-4 border-t mt-6">
+                        <button
+                          onClick={handleUpdateTranscriptConfig}
+                          disabled={updatingTranscript}
+                          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                        >
+                          {updatingTranscript ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Updating...
+                            </>
+                          ) : (
+                            "Update Transcript Configuration"
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {activeSection === "authentication" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <Shield className="h-6 w-6 text-indigo-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">Authentication Configuration</h2>
+                  </div>
+
+                  {/* Enable Authentication Toggle */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Enable Authentication in Chat
+                        </label>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Require WhatsApp OTP verification before users can continue chatting
+                        </p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          setAuthConfig({
+                            ...authConfig,
+                            auth_enabled: !authConfig.auth_enabled,
+                          })
+                        }
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          authConfig.auth_enabled ? "bg-indigo-600" : "bg-gray-300"
+                        } cursor-pointer`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            authConfig.auth_enabled ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {authConfig.auth_enabled && (
+                    <>
+                      {/* Trigger Message Count */}
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Trigger Authentication After
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={authConfig.auth_trigger_message_count}
+                          onChange={(e) =>
+                            setAuthConfig({
+                              ...authConfig,
+                              auth_trigger_message_count: parseInt(e.target.value) || 1,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Number of user messages before authentication is requested
+                        </p>
+                      </div>
+
+                      {/* Provider Selection */}
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          WhatsApp Provider <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={authConfig.auth_provider}
+                          onChange={(e) =>
+                            setAuthConfig({
+                              ...authConfig,
+                              auth_provider: e.target.value,
+                              provider_config: {}, // Reset config when changing provider
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          <option value="aisensy">AISensy</option>
+                          <option value="twilio">Twilio</option>
+                          <option value="messagebird">MessageBird</option>
+                          <option value="360dialog">360dialog</option>
+                          <option value="gupshup">Gupshup</option>
+                        </select>
+                      </div>
+
+                      {/* Provider-Specific Configuration */}
+                      <div className="mb-6 border-t pt-6">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                          {authConfig.auth_provider.charAt(0).toUpperCase() + authConfig.auth_provider.slice(1)} Configuration
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {authConfig.auth_provider === "aisensy" && (
+                            <AISensyConfigFields
+                              config={authConfig}
+                              setConfig={setAuthConfig}
+                              showPassword={showAuthPassword}
+                              setShowPassword={setShowAuthPassword}
+                            />
+                          )}
+                          {authConfig.auth_provider === "twilio" && (
+                            <TwilioConfigFields
+                              config={authConfig}
+                              setConfig={setAuthConfig}
+                              showPassword={showAuthPassword}
+                              setShowPassword={setShowAuthPassword}
+                            />
+                          )}
+                          {authConfig.auth_provider === "messagebird" && (
+                            <MessageBirdConfigFields
+                              config={authConfig}
+                              setConfig={setAuthConfig}
+                              showPassword={showAuthPassword}
+                              setShowPassword={setShowAuthPassword}
+                            />
+                          )}
+                          {authConfig.auth_provider === "360dialog" && (
+                            <Dialog360ConfigFields
+                              config={authConfig}
+                              setConfig={setAuthConfig}
+                              showPassword={showAuthPassword}
+                              setShowPassword={setShowAuthPassword}
+                            />
+                          )}
+                          {authConfig.auth_provider === "gupshup" && (
+                            <GupshupConfigFields
+                              config={authConfig}
+                              setConfig={setAuthConfig}
+                              showPassword={showAuthPassword}
+                              setShowPassword={setShowAuthPassword}
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Custom Messages */}
+                      <div className="mb-6 border-t pt-6">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Custom Messages (Optional)</h3>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Phone Prompt Text
+                            </label>
+                            <textarea
+                              value={authConfig.auth_phone_prompt_text}
+                              onChange={(e) =>
+                                setAuthConfig({
+                                  ...authConfig,
+                                  auth_phone_prompt_text: e.target.value,
+                                })
+                              }
+                              placeholder="To continue chat, please type your whatsapp number."
+                              rows={2}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              OTP Prompt Text
+                            </label>
+                            <textarea
+                              value={authConfig.auth_otp_prompt_text}
+                              onChange={(e) =>
+                                setAuthConfig({
+                                  ...authConfig,
+                                  auth_otp_prompt_text: e.target.value,
+                                })
+                              }
+                              placeholder="I've sent an OTP to your whatsapp number. Please enter the 6-digit OTP code."
+                              rows={2}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Success Message
+                            </label>
+                            <textarea
+                              value={authConfig.auth_success_text}
+                              onChange={(e) =>
+                                setAuthConfig({
+                                  ...authConfig,
+                                  auth_success_text: e.target.value,
+                                })
+                              }
+                              placeholder="Great! You're verified. How can I help you?"
+                              rows={2}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Save Button */}
+                      <div className="flex justify-end">
+                        <button
+                          onClick={async () => {
+                            if (!selectedChatbotId) {
+                              toast.error("Please select a chatbot first");
+                              return;
+                            }
+                            try {
+                              setUpdatingAuth(true);
+                              await updateAuthConfig(selectedChatbotId, authConfig);
+                              toast.success("Authentication configuration updated successfully! ✅");
+                            } catch (error) {
+                              console.error("Error updating auth config:", error);
+                              toast.error(error.response?.data?.message || "Failed to update authentication configuration");
+                            } finally {
+                              setUpdatingAuth(false);
+                            }
+                          }}
+                          disabled={updatingAuth}
+                          className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {updatingAuth ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Updating...
+                            </>
+                          ) : (
+                            <>
+                              <Shield className="h-4 w-4" />
+                              Update Authentication Settings
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* Social Media Configuration Section */}
               {activeSection === "social" && (
                 <div className="bg-white rounded-xl shadow-lg p-6">
@@ -3160,11 +4005,55 @@ const ManageChatbotUIPage = () => {
   }
 
   // Default table view
+  // Filter table rows based on search query
+  const filteredRows = tableRows.filter((row) => {
+    if (!search.trim()) return true;
+    const searchLower = search.toLowerCase();
+    return (
+      (row.companyName || "").toLowerCase().includes(searchLower) ||
+      (row.userName || "").toLowerCase().includes(searchLower) ||
+      (row.email || "").toLowerCase().includes(searchLower) ||
+      (row.phoneNo || "").toLowerCase().includes(searchLower) ||
+      (row.managedByName || "").toLowerCase().includes(searchLower) ||
+      (row.chatbotName || "").toLowerCase().includes(searchLower)
+    );
+  });
+
   return (
     <div className="p-4 md:p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-[#1e3a8a] mb-2">Manage Chatbot UI</h1>
         <p className="text-gray-600">Manage and configure chatbot UI settings</p>
+      </div>
+
+      {/* Search Input */}
+      <div className="mb-6">
+        <div className="relative w-full max-w-md">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            size={18}
+          />
+          <input
+            type="text"
+            placeholder="Search by company name, username, email, phone, managed by, or chatbot name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] shadow-sm"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
+        {search && (
+          <p className="mt-2 text-sm text-gray-600">
+            Showing {filteredRows.length} of {tableRows.length} companies
+          </p>
+        )}
       </div>
 
       {loadingCompanies ? (
@@ -3191,19 +4080,19 @@ const ManageChatbotUIPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {tableRows.length === 0 ? (
+                {filteredRows.length === 0 ? (
                   <tr>
                     <td colSpan="10" className="px-4 py-8 text-center text-gray-500">
-                      No companies found
+                      {search ? "No companies found matching your search" : "No companies found"}
                     </td>
                   </tr>
                 ) : (
-                  tableRows.map((row, idx) => (
+                  filteredRows.map((row, idx) => (
                     <tr
                       key={`${row.companyId}-${row.chatbotId || 'no-chatbot'}`}
                       className={`hover:bg-gray-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-teal-50'}`}
                     >
-                      <td className="px-4 py-2">{row.index}</td>
+                      <td className="px-4 py-2">{idx + 1}</td>
                       <td className="px-4 py-2 font-medium">{row.companyName}</td>
                       <td className="px-4 py-2">
                         {editingUsername[row.companyId] ? (

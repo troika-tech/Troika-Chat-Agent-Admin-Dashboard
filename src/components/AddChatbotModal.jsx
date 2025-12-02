@@ -3,11 +3,25 @@ import { useState } from "react";
 
 const AddChatbotModal = ({ company, onClose, onCreate }) => {
   const [name, setName] = useState(`${company.name} Bot`);
+  const [initialCredits, setInitialCredits] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onCreate(company._id, name);
+    
+    // Validate initial credits is provided and valid
+    if (!initialCredits.trim()) {
+      alert("Initial Credits is required");
+      return;
+    }
+    
+    const credits = parseInt(initialCredits, 10);
+    if (isNaN(credits) || credits < 0) {
+      alert("Please enter a valid credit amount (0 or greater)");
+      return;
+    }
+    
+    onCreate(company._id, name, credits);
     onClose();
   };
 
@@ -24,6 +38,21 @@ const AddChatbotModal = ({ company, onClose, onCreate }) => {
               onChange={(e) => setName(e.target.value)}
               className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
               required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Initial Credits <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              value={initialCredits}
+              onChange={(e) => setInitialCredits(e.target.value)}
+              placeholder="Enter credits"
+              min="0"
+              required
+              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
             />
           </div>
 

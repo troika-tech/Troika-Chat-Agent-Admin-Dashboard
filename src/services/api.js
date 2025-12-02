@@ -1,8 +1,8 @@
 import axios from "axios";
-import { API_BASE_URL } from "../config/api.config";
 
 const api = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
+  // baseURL: "https://api.0804.in/api",
+  baseURL: "http://localhost:5000/api",
   withCredentials: true,
 });
 
@@ -252,6 +252,27 @@ export const deleteCompany = (companyId) => {
   return api.delete(`/companies/${companyId}`);
 };
 
+// Company Credit Management
+export const assignCompanyCredits = (companyId, credits, reason) => {
+  return api.post(`/company/${companyId}/credits`, { credits, reason });
+};
+
+export const getCompanyCreditBalance = (companyId) => {
+  return api.get(`/company/${companyId}/credits`);
+};
+
+export const getCompanyCreditHistory = (companyId) => {
+  return api.get(`/company/${companyId}/credits/history`);
+};
+
+export const addCompanyCredits = (companyId, credits, reason) => {
+  return api.post(`/company/${companyId}/credits/add`, { credits, reason });
+};
+
+export const removeCompanyCredits = (companyId, credits, reason) => {
+  return api.post(`/company/${companyId}/credits/remove`, { credits, reason });
+};
+
 // Chatbot Management API endpoints
 export const fetchChatbots = (params = {}) => {
   const queryParams = new URLSearchParams();
@@ -284,6 +305,19 @@ export const deleteChatbot = (chatbotId) => {
 
 export const fetchChatbotDetails = (chatbotId) => {
   return api.get(`/chatbots/${chatbotId}`);
+};
+
+// Authentication Configuration API endpoints
+export const getAuthConfig = (chatbotId) => {
+  return api.get(`/chatbot/${chatbotId}/auth-config`);
+};
+
+export const getAuthConfigAdmin = (chatbotId) => {
+  return api.get(`/chatbot/${chatbotId}/auth-config/admin`);
+};
+
+export const updateAuthConfig = (chatbotId, config) => {
+  return api.put(`/chatbot/${chatbotId}/auth-config`, config);
 };
 
 // Message History API endpoints
@@ -401,6 +435,40 @@ export const updateChatbotSidebarEmail = (chatbotId, enabled, mode, text) => {
 // Embed Script API endpoint
 export const getEmbedScript = (chatbotId) => {
   return api.get(`/chatbot/${chatbotId}/embed-script`);
+};
+
+// Intent Config API endpoints
+export const getIntentConfig = (chatbotId) => {
+  return api.get(`/intent/${chatbotId}`);
+};
+
+export const getIntentConfigAdmin = (chatbotId) => {
+  return api.get(`/intent/${chatbotId}/admin`);
+};
+
+export const updateIntentConfig = (chatbotId, config) => {
+  return api.put(`/intent/${chatbotId}`, config);
+};
+
+export const sendProposal = (chatbotId, phone, serviceName) => {
+  return api.post(`/intent/send-proposal`, {
+    chatbotId,
+    phone,
+    serviceName,
+  });
+};
+
+// Transcript Config API endpoints
+export const getTranscriptConfig = (chatbotId) => {
+  return api.get(`/transcript/${chatbotId}`);
+};
+
+export const getTranscriptConfigAdmin = (chatbotId) => {
+  return api.get(`/transcript/${chatbotId}/admin`);
+};
+
+export const updateTranscriptConfig = (chatbotId, config) => {
+  return api.put(`/transcript/${chatbotId}`, config);
 };
 
 // Email Template API endpoints

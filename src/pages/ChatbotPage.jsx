@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { assignCompanyCredits, getCompanyCreditBalance, addCompanyCredits, removeCompanyCredits } from "../services/api";
 import MessageHistory from "../components/MessageHistory";
 import EditClientConfigModal from "../components/EditClientConfigModal";
 import { toast } from "react-toastify";
@@ -99,8 +100,16 @@ const ManageChatbotsPage = () => {
   const [renewing, setRenewing] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState("");
   const [availablePlans, setAvailablePlans] = useState([]);
-  const [editingTokenLimitFor, setEditingTokenLimitFor] = useState(null);
-  const [newTokenLimit, setNewTokenLimit] = useState("");
+  const [editingCreditsFor, setEditingCreditsFor] = useState(null);
+  const [newCredits, setNewCredits] = useState("");
+  const [companyCredits, setCompanyCredits] = useState({}); // { companyId: { total, used, remaining } }
+  // Add/Remove credit modal state
+  const [showAddCreditModal, setShowAddCreditModal] = useState(false);
+  const [showRemoveCreditModal, setShowRemoveCreditModal] = useState(false);
+  const [selectedCompanyForCredit, setSelectedCompanyForCredit] = useState(null);
+  const [creditAmount, setCreditAmount] = useState("");
+  const [creditReason, setCreditReason] = useState("");
+  const [processingCredit, setProcessingCredit] = useState(false);
 
   // Persona modal state
   const [personaLoading, setPersonaLoading] = useState(false);
@@ -132,6 +141,34 @@ const ManageChatbotsPage = () => {
       );
 
       setChatbots(uniqueSubs || []);
+
+      // Fetch company credit balances for all unique companies
+      const companyIds = [...new Set(
+        uniqueSubs
+          .map(sub => {
+            const companyId = sub.chatbot_id?.company_id;
+            // Handle both string and ObjectId formats
+            return companyId ? String(companyId) : null;
+          })
+          .filter(Boolean)
+      )];
+      
+      const creditPromises = companyIds.map(async (companyId) => {
+        try {
+          const creditRes = await getCompanyCreditBalance(companyId);
+          return { companyId, credits: creditRes.data?.data || creditRes.data };
+        } catch (err) {
+          console.error(`Failed to fetch credits for company ${companyId}:`, err);
+          return { companyId, credits: { total: 0, used: 0, remaining: 0 } };
+        }
+      });
+      const creditResults = await Promise.all(creditPromises);
+      const creditsMap = {};
+      creditResults.forEach(({ companyId, credits }) => {
+        creditsMap[companyId] = credits;
+      });
+      setCompanyCredits(creditsMap);
+
       setAvailablePlans(plansResponse.data.plans || []);
     } catch (err) {
       console.error("Failed to fetch data:", err);
@@ -145,23 +182,123 @@ const ManageChatbotsPage = () => {
     fetchAllData();
   }, [token]); // 👈 3. Re-run when token is available
 
-  const handleUpdateTokenLimit = async (chatbotId) => {
-    // This is an optimistic update. In a real app, you'd also send this to the backend.
-    setChatbots((prev) =>
-      prev.map((sub) =>
-        sub.chatbot_id._id === chatbotId
-          ? {
-              ...sub,
-              chatbot_id: {
-                ...sub.chatbot_id,
-                token_limit: parseInt(newTokenLimit, 10),
-              },
-            }
-          : sub
-      )
-    );
-    toast(<CustomSuccessToast text="Token limit updated!" />);
-    setEditingTokenLimitFor(null);
+  const handleUpdateCredits = async (companyId) => {
+    if (!companyId) {
+      toast.error("Company ID is missing. Cannot update credits.");
+      return;
+    }
+
+    try {
+      const credits = parseInt(newCredits, 10);
+      if (isNaN(credits) || credits < 0) {
+        toast.error("Please enter a valid credit amount");
+        return;
+      }
+
+      await assignCompanyCredits(String(companyId), credits, "Admin credit adjustment");
+      
+      // Update local state - credits are reset, so used = 0, remaining = total
+      setCompanyCredits((prev) => ({
+        ...prev,
+        [companyId]: {
+          total: credits,
+          used: 0, // Reset to 0
+          remaining: credits // Remaining = total after reset
+        }
+      }));
+
+      toast.success("Credits updated successfully!");
+      setEditingCreditsFor(null);
+      setNewCredits("");
+    } catch (err) {
+      console.error("Failed to update credits:", err);
+      toast.error("Failed to update credits. Please try again.");
+    }
+  };
+
+  const handleAddCredits = async () => {
+    if (!selectedCompanyForCredit) {
+      toast.error("Company ID is missing.");
+      return;
+    }
+
+    const credits = parseInt(creditAmount, 10);
+    if (isNaN(credits) || credits <= 0) {
+      toast.error("Please enter a valid credit amount (greater than 0)");
+      return;
+    }
+
+    setProcessingCredit(true);
+    try {
+      const result = await addCompanyCredits(String(selectedCompanyForCredit), credits, creditReason || "Credits added by admin");
+      
+      // Update local state with new credit values
+      const currentCredits = companyCredits[selectedCompanyForCredit] || { total: 0, used: 0, remaining: 0 };
+      setCompanyCredits((prev) => ({
+        ...prev,
+        [selectedCompanyForCredit]: {
+          total: result.data.data.total_credits,
+          used: result.data.data.used_credits,
+          remaining: result.data.data.remaining_credits
+        }
+      }));
+
+      toast.success(`${credits} credits added successfully!`);
+      setShowAddCreditModal(false);
+      setCreditAmount("");
+      setCreditReason("");
+      setSelectedCompanyForCredit(null);
+    } catch (err) {
+      console.error("Failed to add credits:", err);
+      toast.error(err.response?.data?.message || "Failed to add credits.");
+    } finally {
+      setProcessingCredit(false);
+    }
+  };
+
+  const handleRemoveCredits = async () => {
+    if (!selectedCompanyForCredit) {
+      toast.error("Company ID is missing.");
+      return;
+    }
+
+    const credits = parseInt(creditAmount, 10);
+    if (isNaN(credits) || credits <= 0) {
+      toast.error("Please enter a valid credit amount (greater than 0)");
+      return;
+    }
+
+    const currentCredits = companyCredits[selectedCompanyForCredit] || { total: 0, used: 0, remaining: 0 };
+    if (credits > currentCredits.remaining) {
+      toast.error(`Cannot remove ${credits} credits. Only ${currentCredits.remaining} credits remaining.`);
+      return;
+    }
+
+    setProcessingCredit(true);
+    try {
+      const result = await removeCompanyCredits(String(selectedCompanyForCredit), credits, creditReason || "Credits removed by admin");
+      
+      // Update local state with new credit values
+      setCompanyCredits((prev) => ({
+        ...prev,
+        [selectedCompanyForCredit]: {
+          total: result.data.data.total_credits,
+          used: result.data.data.used_credits,
+          remaining: result.data.data.remaining_credits
+        }
+      }));
+
+      toast.success(`${credits} credits removed successfully!`);
+      setShowRemoveCreditModal(false);
+      setCreditAmount("");
+      setCreditReason("");
+      setSelectedCompanyForCredit(null);
+    } catch (err) {
+      console.error("Failed to remove credits:", err);
+      toast.error(err.response?.data?.message || "Failed to remove credits.");
+    } finally {
+      setProcessingCredit(false);
+    }
   };
 
   const handleRenew = async (id) => {
@@ -304,10 +441,9 @@ const ManageChatbotsPage = () => {
               .map((sub) => {
                 const cb = sub.chatbot_id;
                 const plan = sub.plan_id;
-                const remainingTokens =
-                  cb.token_limit != null && cb.used_tokens != null
-                    ? Math.max(cb.token_limit - cb.used_tokens, 0)
-                    : "Unlimited";
+                // Handle both string and ObjectId formats, convert to string for consistency
+                const companyId = cb.company_id ? String(cb.company_id) : null;
+                const credits = companyId ? (companyCredits[companyId] || { total: 0, used: 0, remaining: 0 }) : { total: 0, used: 0, remaining: 0 };
 
                 return (
                   <div
@@ -337,9 +473,9 @@ const ManageChatbotsPage = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                       <Stat
-                        label="TOKEN USAGE"
+                        label="CREDITS USED"
                         value={new Intl.NumberFormat("en-IN").format(
-                          cb.used_tokens || 0
+                          credits.used || 0
                         )}
                       />
                       <Stat
@@ -355,53 +491,81 @@ const ManageChatbotsPage = () => {
                         )}
                       />
                       <Stat
-                        label="REMAINING TOKENS"
-                        value={
-                          typeof remainingTokens === "number"
-                            ? new Intl.NumberFormat("en-IN").format(
-                                remainingTokens
-                              )
-                            : remainingTokens
-                        }
+                        label="REMAINING CREDITS"
+                        value={new Intl.NumberFormat("en-IN").format(
+                          credits.remaining || 0
+                        )}
                       />
                     </div>
 
-                    <div className="mb-8">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm text-gray-500">
-                          Total Token Limit
-                        </p>
-                        {editingTokenLimitFor !== cb._id && (
-                          <button
-                            onClick={() => {
-                              setEditingTokenLimitFor(cb._id);
-                              setNewTokenLimit(cb.token_limit ?? "");
-                            }}
-                          >
-                            <Pencil
-                              size={12}
-                              className="text-gray-400 hover:text-blue-600"
-                            />
-                          </button>
+                    {/* Total Credits UI - Commented out */}
+                    {/* <div className="mb-8">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-gray-500">
+                            Total Credits
+                          </p>
+                          {editingCreditsFor !== companyId && companyId && (
+                            <button
+                              onClick={() => {
+                                setEditingCreditsFor(companyId);
+                                setNewCredits(credits.total || "");
+                              }}
+                            >
+                              <Pencil
+                                size={12}
+                                className="text-gray-400 hover:text-blue-600"
+                              />
+                            </button>
+                          )}
+                        </div>
+                        {editingCreditsFor !== companyId && companyId && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedCompanyForCredit(companyId);
+                                setShowAddCreditModal(true);
+                                setCreditAmount("");
+                                setCreditReason("");
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-1"
+                            >
+                              <span>+</span> Add Credit
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedCompanyForCredit(companyId);
+                                setShowRemoveCreditModal(true);
+                                setCreditAmount("");
+                                setCreditReason("");
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center gap-1"
+                            >
+                              <span>−</span> Remove Credit
+                            </button>
+                          </div>
                         )}
                       </div>
-                      {editingTokenLimitFor === cb._id ? (
+                      {editingCreditsFor === companyId && companyId ? (
                         <div className="flex items-center gap-2">
                           <input
                             type="number"
-                            value={newTokenLimit}
-                            onChange={(e) => setNewTokenLimit(e.target.value)}
+                            value={newCredits}
+                            onChange={(e) => setNewCredits(e.target.value)}
                             className="text-3xl font-bold text-gray-800 bg-slate-100 rounded-md p-1 w-full max-w-xs"
                             autoFocus
                           />
                           <button
-                            onClick={() => handleUpdateTokenLimit(cb._id)}
+                            onClick={() => handleUpdateCredits(companyId)}
                             className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                           >
                             <Save size={20} />
                           </button>
                           <button
-                            onClick={() => setEditingTokenLimitFor(null)}
+                            onClick={() => {
+                              setEditingCreditsFor(null);
+                              setNewCredits("");
+                            }}
                             className="p-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
                           >
                             <span className="text-lg font-bold">&times;</span>
@@ -410,11 +574,51 @@ const ManageChatbotsPage = () => {
                       ) : (
                         <p className="text-3xl font-bold text-gray-800">
                           {new Intl.NumberFormat("en-IN").format(
-                            cb.token_limit ?? 0
+                            credits.total || 0
                           )}
                         </p>
                       )}
-                    </div>
+                    </div> */}
+
+                    {/* Credit Management Section - Prominent Add/Remove Buttons */}
+                    {companyId && (
+                      <div className="mb-8 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700 mb-1">
+                              Credit Management
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Add or remove credits for this company
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => {
+                                setSelectedCompanyForCredit(companyId);
+                                setShowAddCreditModal(true);
+                                setCreditAmount("");
+                                setCreditReason("");
+                              }}
+                              className="px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
+                            >
+                              <span className="text-lg">+</span> Add Credit
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedCompanyForCredit(companyId);
+                                setShowRemoveCreditModal(true);
+                                setCreditAmount("");
+                                setCreditReason("");
+                              }}
+                              className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center gap-2 shadow-sm"
+                            >
+                              <span className="text-lg">−</span> Remove Credit
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="mb-8">
                       <p className="font-semibold text-gray-800 mb-1">
@@ -535,6 +739,46 @@ const ManageChatbotsPage = () => {
           setSelectedPlan={setSelectedPlan}
           onConfirm={() => handleRenew(renewing)}
           onClose={() => setRenewing(null)}
+        />
+      )}
+
+      {/* Add Credit Modal */}
+      {showAddCreditModal && selectedCompanyForCredit && (
+        <AddCreditModal
+          companyId={selectedCompanyForCredit}
+          currentCredits={companyCredits[selectedCompanyForCredit]}
+          creditAmount={creditAmount}
+          creditReason={creditReason}
+          setCreditAmount={setCreditAmount}
+          setCreditReason={setCreditReason}
+          onConfirm={handleAddCredits}
+          onClose={() => {
+            setShowAddCreditModal(false);
+            setSelectedCompanyForCredit(null);
+            setCreditAmount("");
+            setCreditReason("");
+          }}
+          processing={processingCredit}
+        />
+      )}
+
+      {/* Remove Credit Modal */}
+      {showRemoveCreditModal && selectedCompanyForCredit && (
+        <RemoveCreditModal
+          companyId={selectedCompanyForCredit}
+          currentCredits={companyCredits[selectedCompanyForCredit]}
+          creditAmount={creditAmount}
+          creditReason={creditReason}
+          setCreditAmount={setCreditAmount}
+          setCreditReason={setCreditReason}
+          onConfirm={handleRemoveCredits}
+          onClose={() => {
+            setShowRemoveCreditModal(false);
+            setSelectedCompanyForCredit(null);
+            setCreditAmount("");
+            setCreditReason("");
+          }}
+          processing={processingCredit}
         />
       )}
 
@@ -773,6 +1017,188 @@ const PersonaModal = ({
               </div>
             </>
           )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Add Credit Modal ---
+const AddCreditModal = ({
+  companyId,
+  currentCredits,
+  creditAmount,
+  creditReason,
+  setCreditAmount,
+  setCreditReason,
+  onConfirm,
+  onClose,
+  processing,
+}) => {
+  const remaining = currentCredits?.remaining || 0;
+  const total = currentCredits?.total || 0;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-6 rounded-xl w-full max-w-md relative shadow-2xl border border-gray-200">
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 text-gray-500 hover:text-[#1e3a8a] text-xl transition-colors"
+        >
+          &times;
+        </button>
+        <h3 className="text-xl font-semibold mb-4 text-green-600 flex items-center gap-2">
+          <span>+</span> Add Credits
+        </h3>
+        <div className="space-y-4">
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <p className="text-sm text-gray-600">Current Credits</p>
+            <p className="text-lg font-semibold text-gray-800">
+              Total: {new Intl.NumberFormat("en-IN").format(total)} | Remaining: {new Intl.NumberFormat("en-IN").format(remaining)}
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Credits to Add
+            </label>
+            <input
+              type="number"
+              value={creditAmount}
+              onChange={(e) => setCreditAmount(e.target.value)}
+              placeholder="Enter amount"
+              min="1"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Reason (Optional)
+            </label>
+            <input
+              type="text"
+              value={creditReason}
+              onChange={(e) => setCreditReason(e.target.value)}
+              placeholder="e.g., Monthly allocation, Bonus credits"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={processing || !creditAmount || parseInt(creditAmount, 10) <= 0}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {processing ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Credits"
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Remove Credit Modal ---
+const RemoveCreditModal = ({
+  companyId,
+  currentCredits,
+  creditAmount,
+  creditReason,
+  setCreditAmount,
+  setCreditReason,
+  onConfirm,
+  onClose,
+  processing,
+}) => {
+  const remaining = currentCredits?.remaining || 0;
+  const total = currentCredits?.total || 0;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-6 rounded-xl w-full max-w-md relative shadow-2xl border border-gray-200">
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 text-gray-500 hover:text-[#1e3a8a] text-xl transition-colors"
+        >
+          &times;
+        </button>
+        <h3 className="text-xl font-semibold mb-4 text-red-600 flex items-center gap-2">
+          <span>−</span> Remove Credits
+        </h3>
+        <div className="space-y-4">
+          <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+            <p className="text-sm text-gray-600">Current Credits</p>
+            <p className="text-lg font-semibold text-gray-800">
+              Total: {new Intl.NumberFormat("en-IN").format(total)} | Remaining: {new Intl.NumberFormat("en-IN").format(remaining)}
+            </p>
+            {remaining > 0 && (
+              <p className="text-xs text-red-600 mt-1">
+                You can remove up to {new Intl.NumberFormat("en-IN").format(remaining)} credits
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Credits to Remove
+            </label>
+            <input
+              type="number"
+              value={creditAmount}
+              onChange={(e) => setCreditAmount(e.target.value)}
+              placeholder="Enter amount"
+              min="1"
+              max={remaining}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Reason (Optional)
+            </label>
+            <input
+              type="text"
+              value={creditReason}
+              onChange={(e) => setCreditReason(e.target.value)}
+              placeholder="e.g., Refund, Adjustment"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+            />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={processing || !creditAmount || parseInt(creditAmount, 10) <= 0 || parseInt(creditAmount, 10) > remaining}
+              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {processing ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                "Remove Credits"
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

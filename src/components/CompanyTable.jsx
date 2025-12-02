@@ -51,12 +51,19 @@ const CompanyTable = ({ companies, refresh, onEditCompany, loading }) => { // �
   const [selectedCompanyForAdd, setSelectedCompanyForAdd] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const handleCreateChatbot = async (companyId, name) => {
+  const handleCreateChatbot = async (companyId, name, initialCredits) => {
     try {
       // Use the correct endpoint path - backend route is /api/chatbot/create
       // The api interceptor will automatically add the Authorization header
-      await api.post("/chatbot/create", { companyId, name });
-      toast.success("Chatbot created ✅");
+      // initialCredits is now required
+      if (initialCredits === null || initialCredits === undefined || initialCredits < 0) {
+        toast.error("Initial credits is required and must be 0 or greater");
+        return;
+      }
+      
+      const payload = { companyId, name, initial_credits: initialCredits };
+      await api.post("/chatbot/create", payload);
+      toast.success(`Chatbot created and ${initialCredits} credits assigned ✅`);
       refresh();
     } catch (error) {
       console.error(
