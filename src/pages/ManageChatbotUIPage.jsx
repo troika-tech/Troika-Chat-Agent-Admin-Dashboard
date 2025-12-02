@@ -1,0 +1,3440 @@
+import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import {
+  fetchChatbots,
+  getChatbotUIConfig,
+  updateChatbotUIAvatar,
+  updateChatbotUIWelcomeText,
+  updateChatbotUIAssistantHeader,
+  updateChatbotUITabConfig,
+  getChatbotSidebarConfig,
+  updateChatbotSidebarEnabled,
+  updateChatbotSidebarWhatsApp,
+  updateChatbotSidebarCall,
+  updateChatbotSidebarCalendly,
+  updateChatbotSidebarEmail,
+  getEmailTemplates,
+  createEmailTemplate,
+  updateEmailTemplate,
+  deleteEmailTemplate,
+  getSocialMediaLinks,
+  createSocialMediaLink,
+  updateSocialMediaLink,
+  deleteSocialMediaLink,
+  updateChatbotSidebarSocial,
+  updateChatbotSidebarBranding,
+  updateChatbotSidebarHeader,
+  getCustomNavigationItems,
+  createCustomNavigationItem,
+  updateCustomNavigationItem,
+  deleteCustomNavigationItem,
+  updateChatbotSidebarCustomNav,
+} from "../services/api";
+import { Image, Type, Loader2, MessageSquare, Phone, Settings, Calendar, Mail, Plus, Edit2, Trash2, X, Share2, Sparkles, Heading, Navigation, Monitor, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import IconSelector from "../components/IconSelector";
+import api from "../services/api";
+
+const ManageChatbotUIPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const chatbotIdFromQuery = searchParams.get("chatbotId");
+
+  // Table view state
+  const [companies, setCompanies] = useState([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
+  const [tableRows, setTableRows] = useState([]);
+  const [editingManagedBy, setEditingManagedBy] = useState({});
+  const [managedByValues, setManagedByValues] = useState({});
+  const [updatingStatus, setUpdatingStatus] = useState({});
+  const [updatingManagedBy, setUpdatingManagedBy] = useState({});
+  // Username editing state
+  const [editingUsername, setEditingUsername] = useState({});
+  const [usernameValues, setUsernameValues] = useState({});
+  const [updatingUsername, setUpdatingUsername] = useState({});
+  // Password editing state
+  const [editingPassword, setEditingPassword] = useState({});
+  const [passwordValues, setPasswordValues] = useState({});
+  const [updatingPassword, setUpdatingPassword] = useState({});
+  const [showPassword, setShowPassword] = useState({}); // Track password visibility per company
+  const [showPasswordInput, setShowPasswordInput] = useState({}); // Track input visibility when editing
+  const [decryptedPasswords, setDecryptedPasswords] = useState({}); // Store decrypted passwords
+  const [canDecryptPassword, setCanDecryptPassword] = useState({}); // Track which companies can decrypt
+  const [loadingPassword, setLoadingPassword] = useState({}); // Track password loading state
+  // Phone number editing state
+  const [editingPhone, setEditingPhone] = useState({});
+  const [phoneValues, setPhoneValues] = useState({});
+  const [updatingPhone, setUpdatingPhone] = useState({});
+  
+  // Debug: Log canDecryptPassword state changes
+  useEffect(() => {
+    console.log('[Password Debug] canDecryptPassword state:', canDecryptPassword);
+  }, [canDecryptPassword]);
+
+  // Configuration view state
+  const [chatbots, setChatbots] = useState([]);
+  const [selectedChatbotId, setSelectedChatbotId] = useState(chatbotIdFromQuery || "");
+  const [selectedChatbot, setSelectedChatbot] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [welcomeText, setWelcomeText] = useState("");
+  const [assistantDisplayName, setAssistantDisplayName] = useState("");
+  const [assistantLogoUrl, setAssistantLogoUrl] = useState("");
+  const [updatingAvatar, setUpdatingAvatar] = useState(false);
+  const [updatingText, setUpdatingText] = useState(false);
+  const [activeSection, setActiveSection] = useState("avatar"); // Single state for active tab
+
+  // Sidebar configuration state
+  const [sidebarEnabled, setSidebarEnabled] = useState(false);
+  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [whatsappMode, setWhatsappMode] = useState("premium_modal");
+  const [whatsappUrl, setWhatsappUrl] = useState("");
+  const [whatsappText, setWhatsappText] = useState("Connect on WhatsApp");
+  const [callEnabled, setCallEnabled] = useState(false);
+  const [callMode, setCallMode] = useState("premium_modal");
+  const [callNumber, setCallNumber] = useState("");
+  const [callText, setCallText] = useState("Talk to a Counsellor");
+  const [calendlyEnabled, setCalendlyEnabled] = useState(false);
+  const [calendlyMode, setCalendlyMode] = useState("premium_modal");
+  const [calendlyUrl, setCalendlyUrl] = useState("");
+  const [calendlyText, setCalendlyText] = useState("Schedule a Meeting");
+  const [emailEnabled, setEmailEnabled] = useState(false);
+  const [emailMode, setEmailMode] = useState("premium_modal");
+  const [emailText, setEmailText] = useState("Send an Email");
+  const [socialEnabled, setSocialEnabled] = useState(false);
+  const [brandingEnabled, setBrandingEnabled] = useState(false);
+  const [brandingText, setBrandingText] = useState("Powered by");
+  const [brandingCompany, setBrandingCompany] = useState("Troika Tech");
+  const [brandingLogoUrl, setBrandingLogoUrl] = useState("");
+  const [brandingLogoLink, setBrandingLogoLink] = useState("");
+  const [headerEnabled, setHeaderEnabled] = useState(false);
+  const [headerText, setHeaderText] = useState("");
+  const [headerLogoUrl, setHeaderLogoUrl] = useState("");
+  const [headerLogoLink, setHeaderLogoLink] = useState("");
+  const [updatingMaster, setUpdatingMaster] = useState(false);
+  const [updatingWhatsApp, setUpdatingWhatsApp] = useState(false);
+  const [updatingCall, setUpdatingCall] = useState(false);
+  const [updatingCalendly, setUpdatingCalendly] = useState(false);
+  const [updatingEmail, setUpdatingEmail] = useState(false);
+  const [updatingSocial, setUpdatingSocial] = useState(false);
+  const [updatingBranding, setUpdatingBranding] = useState(false);
+  const [updatingHeader, setUpdatingHeader] = useState(false);
+  const [tabTitle, setTabTitle] = useState("");
+  const [faviconUrl, setFaviconUrl] = useState("");
+  const [updatingTab, setUpdatingTab] = useState(false);
+
+  // Email Templates state
+  const [emailTemplates, setEmailTemplates] = useState([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [showTemplateForm, setShowTemplateForm] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [templateFormData, setTemplateFormData] = useState({
+    template_name: "",
+    email_subject: "",
+    email_body: "",
+    is_active: true,
+    order: 0,
+  });
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [deletingTemplate, setDeletingTemplate] = useState(null);
+
+  // Social Media Links state
+  const [socialLinks, setSocialLinks] = useState([]);
+  const [loadingSocialLinks, setLoadingSocialLinks] = useState(false);
+  const [showSocialLinkForm, setShowSocialLinkForm] = useState(false);
+  const [editingSocialLink, setEditingSocialLink] = useState(null);
+  const [socialLinkFormData, setSocialLinkFormData] = useState({
+    url: "",
+    platform: "custom",
+    is_active: true,
+    order: 0,
+  });
+  const [savingSocialLink, setSavingSocialLink] = useState(false);
+  const [deletingSocialLink, setDeletingSocialLink] = useState(null);
+  const [detectedPlatform, setDetectedPlatform] = useState(null);
+
+  // Custom Navigation Items state
+  const [customNavEnabled, setCustomNavEnabled] = useState(false);
+  const [customNavItems, setCustomNavItems] = useState([]);
+  const [loadingCustomNavItems, setLoadingCustomNavItems] = useState(false);
+  const [showCustomNavForm, setShowCustomNavForm] = useState(false);
+  const [editingCustomNavItem, setEditingCustomNavItem] = useState(null);
+  const [customNavFormData, setCustomNavFormData] = useState({
+    display_text: "",
+    icon_name: "",
+    redirect_url: "",
+    is_active: true,
+    order: 0,
+  });
+  const [savingCustomNavItem, setSavingCustomNavItem] = useState(false);
+  const [deletingCustomNavItem, setDeletingCustomNavItem] = useState(null);
+  const [updatingCustomNav, setUpdatingCustomNav] = useState(false);
+
+  // Fetch companies with chatbots for table view
+  useEffect(() => {
+    if (!chatbotIdFromQuery) {
+      fetchCompaniesData();
+    }
+  }, [chatbotIdFromQuery]);
+
+  // Fetch chatbots list when chatbotId is in query
+  useEffect(() => {
+    if (chatbotIdFromQuery) {
+    fetchChatbotsList();
+      setSelectedChatbotId(chatbotIdFromQuery);
+    }
+  }, [chatbotIdFromQuery]);
+
+  // Fetch UI config and sidebar config when chatbot is selected
+  useEffect(() => {
+    if (selectedChatbotId) {
+      fetchUIConfig(selectedChatbotId);
+      fetchSidebarConfig(selectedChatbotId);
+      setActiveSection("avatar"); // Reset to first tab
+    } else {
+      setAvatarUrl("");
+      setWelcomeText("");
+      setAssistantDisplayName("");
+      setAssistantLogoUrl("");
+      setSelectedChatbot(null);
+      setActiveSection("avatar");
+      resetSidebarConfig();
+    }
+  }, [selectedChatbotId]);
+
+  // Fetch data when section becomes active
+  useEffect(() => {
+    if (activeSection === "email" && selectedChatbotId) {
+      fetchEmailTemplates(selectedChatbotId);
+    }
+  }, [activeSection, selectedChatbotId]);
+
+  useEffect(() => {
+    if (activeSection === "social" && selectedChatbotId) {
+      fetchSocialMediaLinks(selectedChatbotId);
+    }
+  }, [activeSection, selectedChatbotId]);
+
+  useEffect(() => {
+    if (activeSection === "custom-nav" && selectedChatbotId) {
+      fetchCustomNavigationItems(selectedChatbotId);
+    }
+  }, [activeSection, selectedChatbotId]);
+
+  // Table view functions
+  const fetchCompaniesData = async () => {
+    try {
+      setLoadingCompanies(true);
+      const token = localStorage.getItem("adminToken");
+      const response = await api.get('/company/all', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const companiesData = response.data.companies || response.data.data?.companies || [];
+      setCompanies(companiesData);
+
+      // Create table rows - one row per chatbot
+      const rows = [];
+      companiesData.forEach((company) => {
+        const chatbots = company.chatbots || [];
+        if (chatbots.length === 0) {
+          // If no chatbots, still show company row
+          rows.push({
+            index: rows.length + 1,
+            companyId: company._id,
+            companyName: company.name || "",
+            userName: company.userName || "",
+            email: company.email || "",
+            password: "••••••••",
+            phoneNo: company.phoneNo || "",
+            managedByName: company.managed_by_name || "",
+            chatbotId: null,
+            chatbotName: "No Chatbot",
+            status: "inactive",
+          });
+          setManagedByValues(prev => ({ ...prev, [company._id]: company.managed_by_name || "" }));
+          setUsernameValues(prev => ({ ...prev, [company._id]: company.userName || "" }));
+          setPasswordValues(prev => ({ ...prev, [company._id]: "" })); // Password always starts empty
+          // Check if password can be decrypted (for new companies with encrypted passwords)
+          // Check both password_type and password_encrypted field as fallback
+          const canDecrypt = company.password_type === 'encrypted' || !!company.password_encrypted;
+          console.log(`[Password] Company ${company._id} (${company.name}): password_type="${company.password_type}", has_encrypted=${!!company.password_encrypted}, canDecrypt=${canDecrypt}`);
+          console.log(`[Password] Full company object:`, { 
+            _id: company._id, 
+            password_type: company.password_type, 
+            has_password_encrypted: !!company.password_encrypted,
+            has_password_hash: !!company.password_hash
+          });
+          setCanDecryptPassword(prev => ({ ...prev, [company._id]: canDecrypt }));
+        } else {
+          chatbots.forEach((chatbot) => {
+            rows.push({
+              index: rows.length + 1,
+              companyId: company._id,
+              companyName: company.name || "",
+              userName: company.userName || "",
+              email: company.email || "",
+              password: "••••••••",
+              phoneNo: company.phoneNo || "",
+              managedByName: company.managed_by_name || "",
+              chatbotId: chatbot._id,
+              chatbotName: chatbot.name || "",
+              status: chatbot.status || "active",
+            });
+            setManagedByValues(prev => ({ ...prev, [company._id]: company.managed_by_name || "" }));
+            setUsernameValues(prev => ({ ...prev, [company._id]: company.userName || "" }));
+            setPasswordValues(prev => ({ ...prev, [company._id]: "" })); // Password always starts empty
+            // Check if password can be decrypted (for new companies with encrypted passwords)
+            // Check both password_type and password_encrypted field as fallback
+            const canDecrypt = company.password_type === 'encrypted' || !!company.password_encrypted;
+            console.log(`[Password] Company ${company._id} (${company.name}): password_type="${company.password_type}", has_encrypted=${!!company.password_encrypted}, canDecrypt=${canDecrypt}`);
+            console.log(`[Password] Full company object:`, { 
+              _id: company._id, 
+              password_type: company.password_type, 
+              has_password_encrypted: !!company.password_encrypted,
+              has_password_hash: !!company.password_hash
+            });
+            setCanDecryptPassword(prev => ({ ...prev, [company._id]: canDecrypt }));
+          });
+        }
+      });
+      setTableRows(rows);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+      toast.error("Failed to load companies");
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
+
+  const handleStatusToggle = async (chatbotId, currentStatus) => {
+    if (!chatbotId) {
+      toast.error("No chatbot associated");
+      return;
+    }
+    try {
+      setUpdatingStatus(prev => ({ ...prev, [chatbotId]: true }));
+      const newStatus = currentStatus === "active" ? "inactive" : "active";
+      const token = localStorage.getItem("adminToken");
+      await api.put(`/chatbot/edit/${chatbotId}`, { status: newStatus }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Update local state
+      setTableRows(prev => prev.map(row => 
+        row.chatbotId === chatbotId ? { ...row, status: newStatus } : row
+      ));
+      
+      toast.success(`Status updated to ${newStatus}`);
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error(error?.response?.data?.message || "Failed to update status");
+    } finally {
+      setUpdatingStatus(prev => ({ ...prev, [chatbotId]: false }));
+    }
+  };
+
+  const handleManagedByNameEdit = (companyId) => {
+    setEditingManagedBy(prev => ({ ...prev, [companyId]: true }));
+  };
+
+  const handleManagedByNameSave = async (companyId) => {
+    try {
+      setUpdatingManagedBy(prev => ({ ...prev, [companyId]: true }));
+      const newValue = managedByValues[companyId] || "";
+      const token = localStorage.getItem("adminToken");
+      await api.put(`/company/update/${companyId}`, { managed_by_name: newValue }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Update local state
+      setTableRows(prev => prev.map(row => 
+        row.companyId === companyId ? { ...row, managedByName: newValue } : row
+      ));
+      setCompanies(prev => prev.map(company => 
+        company._id === companyId ? { ...company, managed_by_name: newValue } : company
+      ));
+      
+      setEditingManagedBy(prev => ({ ...prev, [companyId]: false }));
+      toast.success("Managed by name updated");
+    } catch (error) {
+      console.error("Error updating managed by name:", error);
+      toast.error(error?.response?.data?.message || "Failed to update managed by name");
+    } finally {
+      setUpdatingManagedBy(prev => ({ ...prev, [companyId]: false }));
+    }
+  };
+
+  const handleManagedByNameCancel = (companyId) => {
+    setEditingManagedBy(prev => ({ ...prev, [companyId]: false }));
+    // Reset to original value
+    const company = companies.find(c => c._id === companyId);
+    if (company) {
+      setManagedByValues(prev => ({ ...prev, [companyId]: company.managed_by_name || "" }));
+    }
+  };
+
+  // Username editing handlers
+  const handleUsernameEdit = (companyId) => {
+    setEditingUsername(prev => ({ ...prev, [companyId]: true }));
+  };
+
+  const handleUsernameSave = async (companyId) => {
+    try {
+      setUpdatingUsername(prev => ({ ...prev, [companyId]: true }));
+      const newValue = usernameValues[companyId] || "";
+      if (!newValue.trim()) {
+        toast.error("Username cannot be empty");
+        setUpdatingUsername(prev => ({ ...prev, [companyId]: false }));
+        return;
+      }
+      const token = localStorage.getItem("adminToken");
+      await api.put(`/company/update/${companyId}`, { userName: newValue.trim() }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Update local state
+      setTableRows(prev => prev.map(row => 
+        row.companyId === companyId ? { ...row, userName: newValue.trim() } : row
+      ));
+      setCompanies(prev => prev.map(company => 
+        company._id === companyId ? { ...company, userName: newValue.trim() } : company
+      ));
+      
+      setEditingUsername(prev => ({ ...prev, [companyId]: false }));
+      toast.success("Username updated successfully");
+    } catch (error) {
+      console.error("Error updating username:", error);
+      toast.error(error?.response?.data?.message || "Failed to update username");
+    } finally {
+      setUpdatingUsername(prev => ({ ...prev, [companyId]: false }));
+    }
+  };
+
+  const handleUsernameCancel = (companyId) => {
+    setEditingUsername(prev => ({ ...prev, [companyId]: false }));
+    // Reset to original value
+    const company = companies.find(c => c._id === companyId);
+    if (company) {
+      setUsernameValues(prev => ({ ...prev, [companyId]: company.userName || "" }));
+    }
+  };
+
+  // Password editing handlers
+  const handlePasswordEdit = (companyId) => {
+    setEditingPassword(prev => ({ ...prev, [companyId]: true }));
+    setPasswordValues(prev => ({ ...prev, [companyId]: "" })); // Clear password when starting to edit
+    setShowPasswordInput(prev => ({ ...prev, [companyId]: false })); // Start with password hidden
+  };
+
+  const handlePasswordSave = async (companyId) => {
+    try {
+      setUpdatingPassword(prev => ({ ...prev, [companyId]: true }));
+      const newPassword = passwordValues[companyId] || "";
+      if (!newPassword.trim()) {
+        toast.error("Password cannot be empty");
+        setUpdatingPassword(prev => ({ ...prev, [companyId]: false }));
+        return;
+      }
+      if (newPassword.length < 6) {
+        toast.error("Password must be at least 6 characters");
+        setUpdatingPassword(prev => ({ ...prev, [companyId]: false }));
+        return;
+      }
+      const token = localStorage.getItem("adminToken");
+      await api.put(`/company/update/${companyId}`, { password: newPassword.trim() }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setEditingPassword(prev => ({ ...prev, [companyId]: false }));
+      setPasswordValues(prev => ({ ...prev, [companyId]: "" })); // Clear password after save
+      toast.success("Password updated successfully");
+    } catch (error) {
+      console.error("Error updating password:", error);
+      toast.error(error?.response?.data?.message || "Failed to update password");
+    } finally {
+      setUpdatingPassword(prev => ({ ...prev, [companyId]: false }));
+    }
+  };
+
+  const handlePasswordCancel = (companyId) => {
+    setEditingPassword(prev => ({ ...prev, [companyId]: false }));
+    setPasswordValues(prev => ({ ...prev, [companyId]: "" })); // Clear password on cancel
+    setShowPasswordInput(prev => ({ ...prev, [companyId]: false })); // Start with password hidden
+  };
+
+  // Phone number editing handlers
+  const handlePhoneEdit = (companyId) => {
+    setEditingPhone(prev => ({ ...prev, [companyId]: true }));
+    const company = companies.find(c => c._id === companyId);
+    if (company) {
+      setPhoneValues(prev => ({ ...prev, [companyId]: company.phoneNo || "" }));
+    }
+  };
+
+  const handlePhoneSave = async (companyId) => {
+    try {
+      setUpdatingPhone(prev => ({ ...prev, [companyId]: true }));
+      const newValue = phoneValues[companyId] || "";
+      const token = localStorage.getItem("adminToken");
+      await api.put(`/company/update/${companyId}`, { phoneNo: newValue.trim() }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Update local state
+      setTableRows(prev => prev.map(row => 
+        row.companyId === companyId ? { ...row, phoneNo: newValue.trim() } : row
+      ));
+      setCompanies(prev => prev.map(company => 
+        company._id === companyId ? { ...company, phoneNo: newValue.trim() } : company
+      ));
+      
+      setEditingPhone(prev => ({ ...prev, [companyId]: false }));
+      toast.success("Phone number updated successfully");
+    } catch (error) {
+      console.error("Error updating phone number:", error);
+      toast.error(error?.response?.data?.message || "Failed to update phone number");
+    } finally {
+      setUpdatingPhone(prev => ({ ...prev, [companyId]: false }));
+    }
+  };
+
+  const handlePhoneCancel = (companyId) => {
+    setEditingPhone(prev => ({ ...prev, [companyId]: false }));
+    // Reset to original value
+    const company = companies.find(c => c._id === companyId);
+    if (company) {
+      setPhoneValues(prev => ({ ...prev, [companyId]: company.phoneNo || "" }));
+    }
+  };
+
+  // Handle showing/hiding decrypted password
+  const handleShowPassword = async (companyId) => {
+    // If already showing, just hide it
+    if (showPassword[companyId]) {
+      setShowPassword(prev => ({ ...prev, [companyId]: false }));
+      setDecryptedPasswords(prev => {
+        const newState = { ...prev };
+        delete newState[companyId];
+        return newState;
+      });
+      return;
+    }
+
+    // Check if we can decrypt (only for new companies)
+    if (!canDecryptPassword[companyId]) {
+      toast.info("Password cannot be displayed (stored as hash - old company)");
+      return;
+    }
+
+    // If already decrypted, just show it
+    if (decryptedPasswords[companyId]) {
+      setShowPassword(prev => ({ ...prev, [companyId]: true }));
+      return;
+    }
+
+    // Fetch decrypted password from API
+    try {
+      setLoadingPassword(prev => ({ ...prev, [companyId]: true }));
+      const token = localStorage.getItem("adminToken");
+      const response = await api.get(`/company/${companyId}/password`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.data.canDecrypt && response.data.data.password) {
+        setDecryptedPasswords(prev => ({ ...prev, [companyId]: response.data.data.password }));
+        setShowPassword(prev => ({ ...prev, [companyId]: true }));
+      } else {
+        toast.info(response.data.data.message || "Password cannot be retrieved");
+      }
+    } catch (error) {
+      console.error("Error fetching password:", error);
+      toast.error(error?.response?.data?.message || "Failed to retrieve password");
+    } finally {
+      setLoadingPassword(prev => ({ ...prev, [companyId]: false }));
+    }
+  };
+
+  const handleNavigateToUIConfig = (chatbotId) => {
+    if (!chatbotId) {
+      toast.error("No chatbot associated");
+      return;
+    }
+    setSearchParams({ chatbotId });
+    window.scrollTo(0, 0);
+  };
+
+  const handleBackToTable = () => {
+    setSearchParams({});
+    setSelectedChatbotId("");
+  };
+
+  const fetchChatbotsList = async () => {
+    try {
+      setLoading(true);
+      const response = await fetchChatbots();
+      setChatbots(response.data.data?.chatbots || response.data.chatbots || []);
+    } catch (error) {
+      console.error("Error fetching chatbots:", error);
+      toast.error("Failed to load chatbots");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUIConfig = async (chatbotId) => {
+    try {
+      setLoadingConfig(true);
+      const response = await getChatbotUIConfig(chatbotId);
+      const config = response.data.data || response.data;
+      setAvatarUrl(config.avatar_url || "");
+      setWelcomeText(config.welcome_text || "");
+      setAssistantDisplayName(config.assistant_display_name || "");
+      setAssistantLogoUrl(config.assistant_logo_url || "");
+      setTabTitle(config.tab_title || "");
+      setFaviconUrl(config.favicon_url || "");
+      
+      // Find and set selected chatbot details
+      const chatbot = chatbots.find(c => c._id === chatbotId);
+      setSelectedChatbot(chatbot || { name: config.chatbot_name || "Unknown" });
+    } catch (error) {
+      console.error("Error fetching UI config:", error);
+      toast.error("Failed to load UI configuration");
+      setAvatarUrl("");
+      setWelcomeText("");
+      setAssistantDisplayName("");
+      setAssistantLogoUrl("");
+    } finally {
+      setLoadingConfig(false);
+    }
+  };
+
+  const fetchSidebarConfig = async (chatbotId) => {
+    try {
+      const response = await getChatbotSidebarConfig(chatbotId);
+      const config = response.data.data || response.data;
+      setSidebarEnabled(config.sidebar_enabled || false);
+      setWhatsappEnabled(config.whatsapp_enabled || false);
+      setWhatsappMode(config.whatsapp_mode || "premium_modal");
+      setWhatsappUrl(config.whatsapp_url || "");
+      setWhatsappText(config.whatsapp_text || "Connect on WhatsApp");
+      setCallEnabled(config.call_enabled || false);
+      setCallMode(config.call_mode || "premium_modal");
+      setCallNumber(config.call_number || "");
+      setCallText(config.call_text || "Talk to a Counsellor");
+      setCalendlyEnabled(config.calendly_enabled || false);
+      setCalendlyMode(config.calendly_mode || "premium_modal");
+      setCalendlyUrl(config.calendly_url || "");
+      setCalendlyText(config.calendly_text || "Schedule a Meeting");
+      setEmailEnabled(config.email_enabled || false);
+      setEmailMode(config.email_mode || "premium_modal");
+      setEmailText(config.email_text || "Send an Email");
+      setSocialEnabled(config.social_enabled || false);
+      setBrandingEnabled(config.branding_enabled || false);
+      setBrandingText(config.branding_text || "Powered by");
+      setBrandingCompany(config.branding_company || "Troika Tech");
+      setBrandingLogoUrl(config.branding_logo_url || "");
+      setBrandingLogoLink(config.branding_logo_link || "");
+      setHeaderEnabled(config.header_enabled || false);
+      setHeaderText(config.header_text || "");
+      setHeaderLogoUrl(config.header_logo_url || "");
+      setHeaderLogoLink(config.header_logo_link || "");
+      setCustomNavEnabled(config.custom_nav_enabled || false);
+    } catch (error) {
+      console.error("Error fetching sidebar config:", error);
+      resetSidebarConfig();
+    }
+  };
+
+  const fetchEmailTemplates = async (chatbotId) => {
+    try {
+      setLoadingTemplates(true);
+      const response = await getEmailTemplates(chatbotId);
+      const templates = response.data.data?.templates || response.data.templates || [];
+      setEmailTemplates(templates);
+    } catch (error) {
+      console.error("Error fetching email templates:", error);
+      toast.error("Failed to load email templates");
+      setEmailTemplates([]);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  const resetSidebarConfig = () => {
+    setSidebarEnabled(false);
+    setWhatsappEnabled(false);
+    setWhatsappMode("premium_modal");
+    setWhatsappUrl("");
+    setWhatsappText("Connect on WhatsApp");
+    setCallEnabled(false);
+    setCallMode("premium_modal");
+    setCallNumber("");
+    setCallText("Talk to a Counsellor");
+    setCalendlyEnabled(false);
+    setCalendlyMode("premium_modal");
+    setCalendlyUrl("");
+    setCalendlyText("Schedule a Meeting");
+    setEmailEnabled(false);
+    setEmailMode("premium_modal");
+    setEmailText("Send an Email");
+    setEmailTemplates([]);
+    setSocialEnabled(false);
+    setSocialLinks([]);
+    setBrandingEnabled(false);
+    setBrandingText("Powered by");
+    setBrandingCompany("Troika Tech");
+    setBrandingLogoUrl("");
+    setBrandingLogoLink("");
+    setHeaderEnabled(false);
+    setHeaderText("");
+    setHeaderLogoUrl("");
+    setHeaderLogoLink("");
+    setCustomNavEnabled(false);
+    setCustomNavItems([]);
+  };
+
+  const handleAddTemplate = () => {
+    setEditingTemplate(null);
+    setTemplateFormData({
+      template_name: "",
+      email_subject: "",
+      email_body: "",
+      is_active: true,
+      order: emailTemplates.length,
+    });
+    setShowTemplateForm(true);
+  };
+
+  const handleEditTemplate = (template) => {
+    setEditingTemplate(template);
+    setTemplateFormData({
+      template_name: template.template_name || "",
+      email_subject: template.email_subject || "",
+      email_body: template.email_body || "",
+      is_active: template.is_active !== undefined ? template.is_active : true,
+      order: template.order || 0,
+    });
+    setShowTemplateForm(true);
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    if (!templateFormData.template_name.trim()) {
+      toast.error("Template name is required");
+      return;
+    }
+
+    if (!templateFormData.email_subject.trim()) {
+      toast.error("Email subject is required");
+      return;
+    }
+
+    if (!templateFormData.email_body.trim()) {
+      toast.error("Email body is required");
+      return;
+    }
+
+    try {
+      setSavingTemplate(true);
+      if (editingTemplate) {
+        await updateEmailTemplate(selectedChatbotId, editingTemplate._id, templateFormData);
+        toast.success("Email template updated successfully! ✅");
+      } else {
+        await createEmailTemplate(selectedChatbotId, templateFormData);
+        toast.success("Email template created successfully! ✅");
+      }
+      setShowTemplateForm(false);
+      setEditingTemplate(null);
+      await fetchEmailTemplates(selectedChatbotId);
+    } catch (error) {
+      console.error("Error saving template:", error);
+      toast.error(error.response?.data?.message || "Failed to save email template");
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId) => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    if (!window.confirm("Are you sure you want to delete this template?")) {
+      return;
+    }
+
+    try {
+      setDeletingTemplate(templateId);
+      await deleteEmailTemplate(selectedChatbotId, templateId);
+      toast.success("Email template deleted successfully! ✅");
+      await fetchEmailTemplates(selectedChatbotId);
+    } catch (error) {
+      console.error("Error deleting template:", error);
+      toast.error(error.response?.data?.message || "Failed to delete email template");
+    } finally {
+      setDeletingTemplate(null);
+    }
+  };
+
+  // Social Media Links functions
+  const fetchSocialMediaLinks = async (chatbotId) => {
+    try {
+      setLoadingSocialLinks(true);
+      const response = await getSocialMediaLinks(chatbotId);
+      const links = response.data.data?.links || response.data.links || [];
+      setSocialLinks(links);
+    } catch (error) {
+      console.error("Error fetching social media links:", error);
+      toast.error("Failed to load social media links");
+      setSocialLinks([]);
+    } finally {
+      setLoadingSocialLinks(false);
+    }
+  };
+
+  const fetchCustomNavigationItems = async (chatbotId) => {
+    try {
+      setLoadingCustomNavItems(true);
+      const response = await getCustomNavigationItems(chatbotId);
+      const items = response.data.data?.items || response.data.items || [];
+      setCustomNavItems(items);
+    } catch (error) {
+      console.error("Error fetching custom navigation items:", error);
+      toast.error("Failed to load custom navigation items");
+      setCustomNavItems([]);
+    } finally {
+      setLoadingCustomNavItems(false);
+    }
+  };
+
+  // Detect platform from URL (returns platform value for backend)
+  const detectPlatformValue = (url) => {
+    if (!url || typeof url !== 'string') return 'custom';
+    
+    const normalizedUrl = url.trim().toLowerCase();
+    let hostname = '';
+    
+    try {
+      let fullUrl = normalizedUrl;
+      if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+        fullUrl = 'https://' + fullUrl;
+      }
+      const urlObj = new URL(fullUrl);
+      hostname = urlObj.hostname.replace('www.', '').replace('m.', '');
+    } catch (e) {
+      return 'custom';
+    }
+
+    const platformMap = {
+      'facebook.com': 'facebook',
+      'fb.com': 'facebook',
+      'instagram.com': 'instagram',
+      'youtube.com': 'youtube',
+      'youtu.be': 'youtube',
+      'linkedin.com': 'linkedin',
+      'twitter.com': 'twitter',
+      'x.com': 'twitter',
+      'whatsapp.com': 'whatsapp',
+      'wa.me': 'whatsapp',
+      'telegram.org': 'telegram',
+      't.me': 'telegram',
+      'pinterest.com': 'pinterest',
+      'tiktok.com': 'tiktok',
+      'snapchat.com': 'snapchat',
+    };
+
+    for (const [domain, platform] of Object.entries(platformMap)) {
+      if (hostname.includes(domain)) {
+        return platform;
+      }
+    }
+    
+    return 'custom';
+  };
+
+  // Get platform display name
+  const getPlatformDisplayName = (platformValue) => {
+    const displayNames = {
+      facebook: 'Facebook',
+      instagram: 'Instagram',
+      youtube: 'YouTube',
+      linkedin: 'LinkedIn',
+      twitter: 'Twitter/X',
+      whatsapp: 'WhatsApp',
+      telegram: 'Telegram',
+      pinterest: 'Pinterest',
+      tiktok: 'TikTok',
+      snapchat: 'Snapchat',
+      custom: 'Custom Link'
+    };
+    return displayNames[platformValue] || 'Custom Link';
+  };
+
+  const handleAddSocialLink = () => {
+    setEditingSocialLink(null);
+    setSocialLinkFormData({
+      url: "",
+      platform: "custom",
+      is_active: true,
+      order: socialLinks.length,
+    });
+    setDetectedPlatform(null);
+    setShowSocialLinkForm(true);
+  };
+
+  const handleEditSocialLink = (link) => {
+    setEditingSocialLink(link);
+    setSocialLinkFormData({
+      url: link.url || "",
+      platform: link.platform || "custom",
+      is_active: link.is_active !== undefined ? link.is_active : true,
+      order: link.order || 0,
+    });
+    const detected = detectPlatformValue(link.url);
+    setDetectedPlatform(getPlatformDisplayName(detected));
+    setShowSocialLinkForm(true);
+  };
+
+  const handleSocialLinkUrlChange = (url) => {
+    const detectedPlatformValue = detectPlatformValue(url);
+    setSocialLinkFormData({ 
+      ...socialLinkFormData, 
+      url,
+      // Auto-update platform if not manually changed, or if URL changes significantly
+      platform: detectedPlatformValue !== 'custom' ? detectedPlatformValue : socialLinkFormData.platform
+    });
+    setDetectedPlatform(getPlatformDisplayName(detectedPlatformValue));
+  };
+
+  const handleSaveSocialLink = async () => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    if (!socialLinkFormData.url.trim()) {
+      toast.error("URL is required");
+      return;
+    }
+
+    try {
+      setSavingSocialLink(true);
+      if (editingSocialLink) {
+        await updateSocialMediaLink(selectedChatbotId, editingSocialLink._id, socialLinkFormData);
+        toast.success("Social media link updated successfully! ✅");
+      } else {
+        await createSocialMediaLink(selectedChatbotId, socialLinkFormData);
+        toast.success("Social media link created successfully! ✅");
+      }
+      setShowSocialLinkForm(false);
+      setEditingSocialLink(null);
+      await fetchSocialMediaLinks(selectedChatbotId);
+    } catch (error) {
+      console.error("Error saving social link:", error);
+      toast.error(error.response?.data?.message || "Failed to save social media link");
+    } finally {
+      setSavingSocialLink(false);
+    }
+  };
+
+  const handleDeleteSocialLink = async (linkId) => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    if (!window.confirm("Are you sure you want to delete this social media link?")) {
+      return;
+    }
+
+    try {
+      setDeletingSocialLink(linkId);
+      await deleteSocialMediaLink(selectedChatbotId, linkId);
+      toast.success("Social media link deleted successfully! ✅");
+      await fetchSocialMediaLinks(selectedChatbotId);
+    } catch (error) {
+      console.error("Error deleting social link:", error);
+      toast.error(error.response?.data?.message || "Failed to delete social media link");
+    } finally {
+      setDeletingSocialLink(null);
+    }
+  };
+
+  // Custom Navigation Item handlers
+  const handleAddCustomNavItem = () => {
+    setEditingCustomNavItem(null);
+    setCustomNavFormData({
+      display_text: "",
+      icon_name: "",
+      redirect_url: "",
+      is_active: true,
+      order: customNavItems.length,
+    });
+    setShowCustomNavForm(true);
+  };
+
+  const handleEditCustomNavItem = (item) => {
+    setEditingCustomNavItem(item);
+    setCustomNavFormData({
+      display_text: item.display_text || "",
+      icon_name: item.icon_name || "",
+      redirect_url: item.redirect_url || "",
+      is_active: item.is_active !== undefined ? item.is_active : true,
+      order: item.order || 0,
+    });
+    setShowCustomNavForm(true);
+  };
+
+  const handleSaveCustomNavItem = async () => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    if (!customNavFormData.display_text.trim()) {
+      toast.error("Display text is required");
+      return;
+    }
+
+    if (!customNavFormData.icon_name.trim()) {
+      toast.error("Icon name is required");
+      return;
+    }
+
+    if (!customNavFormData.redirect_url.trim()) {
+      toast.error("Redirect URL is required");
+      return;
+    }
+
+    try {
+      setSavingCustomNavItem(true);
+      if (editingCustomNavItem) {
+        await updateCustomNavigationItem(selectedChatbotId, editingCustomNavItem._id, customNavFormData);
+        toast.success("Custom navigation item updated successfully! ✅");
+      } else {
+        await createCustomNavigationItem(selectedChatbotId, customNavFormData);
+        toast.success("Custom navigation item created successfully! ✅");
+      }
+      setShowCustomNavForm(false);
+      setEditingCustomNavItem(null);
+      await fetchCustomNavigationItems(selectedChatbotId);
+    } catch (error) {
+      console.error("Error saving custom navigation item:", error);
+      toast.error(error.response?.data?.message || "Failed to save custom navigation item");
+    } finally {
+      setSavingCustomNavItem(false);
+    }
+  };
+
+  const handleDeleteCustomNavItem = async (itemId) => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    if (!window.confirm("Are you sure you want to delete this custom navigation item?")) {
+      return;
+    }
+
+    try {
+      setDeletingCustomNavItem(itemId);
+      await deleteCustomNavigationItem(selectedChatbotId, itemId);
+      toast.success("Custom navigation item deleted successfully! ✅");
+      await fetchCustomNavigationItems(selectedChatbotId);
+    } catch (error) {
+      console.error("Error deleting custom navigation item:", error);
+      toast.error(error.response?.data?.message || "Failed to delete custom navigation item");
+    } finally {
+      setDeletingCustomNavItem(null);
+    }
+  };
+
+  const handleUpdateAvatar = async () => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    if (!avatarUrl.trim()) {
+      toast.error("Please enter an image URL");
+      return;
+    }
+
+    // Basic URL validation
+    let validUrl;
+    try {
+      validUrl = new URL(avatarUrl.trim());
+    } catch (e) {
+      toast.error("Please enter a valid URL format (e.g., https://example.com/image.jpg)");
+      return;
+    }
+
+    // Check if URL is http or https
+    if (!['http:', 'https:'].includes(validUrl.protocol)) {
+      toast.error("URL must start with http:// or https://");
+      return;
+    }
+
+    try {
+      setUpdatingAvatar(true);
+      await updateChatbotUIAvatar(selectedChatbotId, avatarUrl.trim());
+      toast.success("Avatar image updated successfully! ✅");
+    } catch (error) {
+      console.error("Error updating avatar:", error);
+      toast.error(error.response?.data?.message || "Failed to update avatar image");
+    } finally {
+      setUpdatingAvatar(false);
+    }
+  };
+
+  const handleUpdateWelcomeText = async () => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    if (welcomeText.length > 500) {
+      toast.error("Welcome text must be 500 characters or less");
+      return;
+    }
+
+    try {
+      setUpdatingText(true);
+
+      await updateChatbotUIWelcomeText(selectedChatbotId, welcomeText.trim());
+      await updateChatbotUIAssistantHeader(
+        selectedChatbotId,
+        assistantDisplayName.trim() || null,
+        assistantLogoUrl.trim() || null
+      );
+
+      toast.success("Welcome text and assistant header updated successfully! ✅");
+    } catch (error) {
+      console.error("Error updating welcome text/assistant header:", error);
+      toast.error(error.response?.data?.message || "Failed to update welcome/assistant settings");
+    } finally {
+      setUpdatingText(false);
+    }
+  };
+
+  // If chatbotId is in query params, show configuration view
+  if (chatbotIdFromQuery) {
+  return (
+    <div className="p-6 max-w-6xl mx-auto">
+        <div className="mb-6 flex items-center gap-4">
+          <button
+            onClick={handleBackToTable}
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ArrowLeft size={20} />
+            Back to Table
+          </button>
+          <div>
+        <h1 className="text-3xl font-bold text-[#1e3a8a] mb-2">Manage Chatbot UI</h1>
+        <p className="text-gray-600">Customize the avatar image, welcome message, and sidebar items for your chatbots</p>
+      </div>
+          </div>
+
+        {/* Current Chatbot Info */}
+        {selectedChatbot && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200 mb-6">
+            <p className="text-sm text-gray-600">Current Chatbot:</p>
+            <p className="text-lg font-semibold text-gray-800">{selectedChatbot.name}</p>
+            {selectedChatbot.company_name && (
+              <p className="text-sm text-gray-500 mt-1">Company: {selectedChatbot.company_name}</p>
+        )}
+      </div>
+        )}
+
+      {/* UI Configuration Section */}
+      {selectedChatbotId && (
+        <div className="space-y-6">
+          {loadingConfig ? (
+            <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+              <p className="text-gray-600">Loading UI configuration...</p>
+            </div>
+          ) : (
+            <>
+              {/* Master Sidebar Toggle */}
+              <div className="bg-white rounded-xl shadow-lg p-6 mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Settings className="h-6 w-6 text-blue-600 mr-2" />
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-800">Enable Sidebar Items</h2>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Master toggle to show/hide sidebar items. Individual items must also be enabled.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!selectedChatbotId) {
+                        toast.error("Please select a chatbot first");
+                        return;
+                      }
+                      try {
+                        setUpdatingMaster(true);
+                        await updateChatbotSidebarEnabled(selectedChatbotId, !sidebarEnabled);
+                        setSidebarEnabled(!sidebarEnabled);
+                        toast.success(`Sidebar ${!sidebarEnabled ? "enabled" : "disabled"} successfully! ✅`);
+                      } catch (error) {
+                        console.error("Error updating master toggle:", error);
+                        toast.error(error.response?.data?.message || "Failed to update sidebar toggle");
+                      } finally {
+                        setUpdatingMaster(false);
+                      }
+                    }}
+                    disabled={updatingMaster}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      sidebarEnabled ? "bg-[#1e3a8a]" : "bg-gray-300"
+                    } ${updatingMaster ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        sidebarEnabled ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Horizontal Tabs */}
+              <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
+                <div className="flex flex-wrap gap-2 overflow-x-auto">
+                <button
+                    onClick={() => setActiveSection("avatar")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "avatar"
+                        ? "bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-[#1e3a8a]"
+                    }`}
+                  >
+                    <Image className="h-4 w-4 mr-2" />
+                    Avatar
+                </button>
+
+                <button
+                    onClick={() => setActiveSection("text")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "text"
+                        ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-green-500"
+                    }`}
+                  >
+                    <Type className="h-4 w-4 mr-2" />
+                    Text
+                </button>
+
+                <button
+                    onClick={() => setActiveSection("tab")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "tab"
+                        ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-purple-500"
+                    }`}
+                  >
+                    <Monitor className="h-4 w-4 mr-2" />
+                    Tab
+                </button>
+                <button
+                    onClick={() => setActiveSection("whatsapp")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "whatsapp"
+                        ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-green-500"
+                    }`}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    WhatsApp
+                </button>
+                <button
+                    onClick={() => setActiveSection("call")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "call"
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-blue-500"
+                    }`}
+                  >
+                    <Phone className="h-4 w-4 mr-2" />
+                    Call
+                </button>
+                <button
+                    onClick={() => setActiveSection("calendly")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "calendly"
+                        ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-purple-500"
+                    }`}
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Calendly
+                </button>
+                <button
+                    onClick={() => setActiveSection("email")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "email"
+                        ? "bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-red-500"
+                    }`}
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Email
+                </button>
+                <button
+                    onClick={() => setActiveSection("social")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "social"
+                        ? "bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-cyan-500"
+                    }`}
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Social
+                </button>
+                <button
+                    onClick={() => setActiveSection("branding")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "branding"
+                        ? "bg-gradient-to-r from-yellow-600 to-amber-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-yellow-500"
+                    }`}
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Branding
+                </button>
+                <button
+                    onClick={() => setActiveSection("header")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "header"
+                        ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-indigo-500"
+                    }`}
+                  >
+                    <Heading className="h-4 w-4 mr-2" />
+                    Header
+                </button>
+                <button
+                    onClick={() => setActiveSection("custom-nav")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "custom-nav"
+                        ? "bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-teal-500"
+                    }`}
+                  >
+                    <Navigation className="h-4 w-4 mr-2" />
+                    Custom Nav
+                </button>
+                </div>
+              </div>
+
+              {/* Avatar Image Section */}
+              {activeSection === "avatar" && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center mb-4">
+                  <Image className="h-6 w-6 text-blue-600 mr-2" />
+                  <h2 className="text-xl font-semibold text-gray-800">Avatar Image</h2>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Image URL
+                  </label>
+                  <input
+                    type="url"
+                    value={avatarUrl}
+                    onChange={(e) => setAvatarUrl(e.target.value)}
+                    placeholder="https://example.com/avatar.jpg"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700"
+                  />
+                  <p className="mt-2 text-xs text-gray-500">
+                    Enter the full URL of the image you want to display as the chatbot avatar
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleUpdateAvatar}
+                  disabled={updatingAvatar || !avatarUrl.trim()}
+                  className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+                >
+                  {updatingAvatar ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Image className="h-5 w-5 mr-2" />
+                      Update Avatar Image
+                    </>
+                  )}
+                </button>
+              </div>
+              )}
+
+              {/* Welcome Text Section */}
+              {activeSection === "text" && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center mb-4">
+                  <Type className="h-6 w-6 text-green-600 mr-2" />
+                  <h2 className="text-xl font-semibold text-gray-800">Welcome Message</h2>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Welcome Text
+                  </label>
+                  <textarea
+                    value={welcomeText}
+                    onChange={(e) => setWelcomeText(e.target.value)}
+                    placeholder="Hi! I'm your AI Assistant - here to help..."
+                    rows={4}
+                    maxLength={500}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-700 resize-none"
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="text-xs text-gray-500">
+                      Enter the welcome message that appears above the input box
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {welcomeText.length}/500 characters
+                    </p>
+                  </div>
+
+                </div>
+
+                {/* Text Preview */}
+                {welcomeText && (
+                  <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Preview:</p>
+                    <p className="text-gray-800 italic">"{welcomeText}"</p>
+                  </div>
+                )}
+
+                {/* AI Assistant Logo URL */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    AI Assistant Logo URL
+                  </label>
+                  <input
+                    type="url"
+                    value={assistantLogoUrl}
+                    onChange={(e) => setAssistantLogoUrl(e.target.value)}
+                    placeholder="https://example.com/logo.png"
+                    maxLength={500}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-700"
+                  />
+                  <p className="mt-2 text-xs text-gray-500">
+                    Enter the URL of the image/logo to display next to the assistant name. Leave empty to use default.
+                  </p>
+                </div>
+
+                {/* Assistant Display Name */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Assistant Display Name (shown above replies)
+                  </label>
+                  <input
+                    type="text"
+                    value={assistantDisplayName}
+                    onChange={(e) => setAssistantDisplayName(e.target.value)}
+                    placeholder="e.g., AI Assistant, Admissions Advisor"
+                    maxLength={100}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-700"
+                  />
+                  <p className="mt-2 text-xs text-gray-500">
+                    {assistantDisplayName.length}/100 characters. Leave empty to use a generic assistant name.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleUpdateWelcomeText}
+                  disabled={updatingText}
+                  className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+                >
+                  {updatingText ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Type className="h-5 w-5 mr-2" />
+                      Update Welcome Message
+                    </>
+                  )}
+                </button>
+              </div>
+              )}
+
+              {/* WhatsApp Configuration Section */}
+              {activeSection === "whatsapp" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <MessageSquare className="h-6 w-6 text-green-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">WhatsApp Configuration</h2>
+                  </div>
+
+                  {/* Enable WhatsApp Toggle */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Show WhatsApp in Sidebar
+                      </label>
+                      <button
+                        onClick={() => setWhatsappEnabled(!whatsappEnabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          whatsappEnabled ? "bg-green-600" : "bg-gray-300"
+                        } cursor-pointer`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            whatsappEnabled ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Display Text */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Display Text in Sidebar
+                    </label>
+                    <input
+                      type="text"
+                      value={whatsappText}
+                      onChange={(e) => setWhatsappText(e.target.value)}
+                      placeholder="Connect on WhatsApp"
+                      maxLength={100}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-700"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      {whatsappText.length}/100 characters
+                    </p>
+                  </div>
+
+                  {/* Behavior Mode */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Behavior Mode
+                    </label>
+                    <div className="space-y-3">
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="whatsappMode"
+                          value="redirect"
+                          checked={whatsappMode === "redirect"}
+                          onChange={(e) => setWhatsappMode(e.target.value)}
+                          className="mr-3 h-4 w-4 text-green-600 focus:ring-green-500"
+                        />
+                        <span className="text-gray-700">Redirect to WhatsApp</span>
+                      </label>
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="whatsappMode"
+                          value="premium_modal"
+                          checked={whatsappMode === "premium_modal"}
+                          onChange={(e) => setWhatsappMode(e.target.value)}
+                          className="mr-3 h-4 w-4 text-green-600 focus:ring-green-500"
+                        />
+                        <span className="text-gray-700">Show Premium Modal</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* WhatsApp URL Input (only if redirect mode) */}
+                  {whatsappMode === "redirect" && (
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        WhatsApp URL
+                      </label>
+                      <input
+                        type="text"
+                        value={whatsappUrl}
+                        onChange={(e) => setWhatsappUrl(e.target.value)}
+                        placeholder="https://wa.me/1234567890 or +1234567890"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-700"
+                      />
+                      <p className="mt-2 text-xs text-gray-500">
+                        Enter WhatsApp URL (e.g., https://wa.me/919876543210) or phone number with country code
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={async () => {
+                      if (!selectedChatbotId) {
+                        toast.error("Please select a chatbot first");
+                        return;
+                      }
+                      if (whatsappMode === "redirect" && !whatsappUrl.trim()) {
+                        toast.error("Please enter a WhatsApp URL when mode is 'Redirect'");
+                        return;
+                      }
+                      if (whatsappMode === "redirect" && whatsappUrl.trim()) {
+                        const whatsappUrlPattern = /^(https?:\/\/)?(wa\.me\/|api\.whatsapp\.com\/send\?phone=|\+?\d{10,15})/i;
+                        if (!whatsappUrlPattern.test(whatsappUrl.trim())) {
+                          toast.error("Invalid WhatsApp URL format. Use format like https://wa.me/1234567890 or +1234567890");
+                          return;
+                        }
+                      }
+                      try {
+                        setUpdatingWhatsApp(true);
+                        await updateChatbotSidebarWhatsApp(
+                          selectedChatbotId,
+                          whatsappEnabled,
+                          whatsappMode,
+                          whatsappMode === "redirect" ? whatsappUrl.trim() : null,
+                          whatsappText.trim() || "Connect on WhatsApp"
+                        );
+                        toast.success("WhatsApp configuration updated successfully! ✅");
+                      } catch (error) {
+                        console.error("Error updating WhatsApp config:", error);
+                        toast.error(error.response?.data?.message || "Failed to update WhatsApp configuration");
+                      } finally {
+                        setUpdatingWhatsApp(false);
+                      }
+                    }}
+                    disabled={updatingWhatsApp || !whatsappText.trim()}
+                    className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+                  >
+                    {updatingWhatsApp ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <MessageSquare className="h-5 w-5 mr-2" />
+                        Update WhatsApp Settings
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Call Configuration Section */}
+              {activeSection === "call" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <Phone className="h-6 w-6 text-blue-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">Call Configuration</h2>
+                  </div>
+
+                  {/* Enable Call Toggle */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Show Call in Sidebar
+                      </label>
+                      <button
+                        onClick={() => setCallEnabled(!callEnabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          callEnabled ? "bg-blue-600" : "bg-gray-300"
+                        } cursor-pointer`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            callEnabled ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Display Text */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Display Text in Sidebar
+                    </label>
+                    <input
+                      type="text"
+                      value={callText}
+                      onChange={(e) => setCallText(e.target.value)}
+                      placeholder="Talk to a Counsellor"
+                      maxLength={100}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      {callText.length}/100 characters
+                    </p>
+                  </div>
+
+                  {/* Behavior Mode */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Behavior Mode
+                    </label>
+                    <div className="space-y-3">
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="callMode"
+                          value="redirect"
+                          checked={callMode === "redirect"}
+                          onChange={(e) => setCallMode(e.target.value)}
+                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-gray-700">Redirect to Phone</span>
+                      </label>
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="callMode"
+                          value="premium_modal"
+                          checked={callMode === "premium_modal"}
+                          onChange={(e) => setCallMode(e.target.value)}
+                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-gray-700">Show Premium Modal</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Phone Number Input (only if redirect mode) */}
+                  {callMode === "redirect" && (
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        value={callNumber}
+                        onChange={(e) => setCallNumber(e.target.value)}
+                        placeholder="+1234567890 or 1234567890"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700"
+                      />
+                      <p className="mt-2 text-xs text-gray-500">
+                        Enter phone number with country code (e.g., +919876543210)
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={async () => {
+                      if (!selectedChatbotId) {
+                        toast.error("Please select a chatbot first");
+                        return;
+                      }
+                      if (callMode === "redirect" && !callNumber.trim()) {
+                        toast.error("Please enter a phone number when mode is 'Redirect'");
+                        return;
+                      }
+                      if (callMode === "redirect" && callNumber.trim()) {
+                        const phonePattern = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/;
+                        if (!phonePattern.test(callNumber.trim())) {
+                          toast.error("Invalid phone number format");
+                          return;
+                        }
+                      }
+                      try {
+                        setUpdatingCall(true);
+                        await updateChatbotSidebarCall(
+                          selectedChatbotId,
+                          callEnabled,
+                          callMode,
+                          callMode === "redirect" ? callNumber.trim() : null,
+                          callText.trim() || "Talk to a Counsellor"
+                        );
+                        toast.success("Call configuration updated successfully! ✅");
+                      } catch (error) {
+                        console.error("Error updating Call config:", error);
+                        toast.error(error.response?.data?.message || "Failed to update Call configuration");
+                      } finally {
+                        setUpdatingCall(false);
+                      }
+                    }}
+                    disabled={updatingCall || !callText.trim()}
+                    className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+                  >
+                    {updatingCall ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Phone className="h-5 w-5 mr-2" />
+                        Update Call Settings
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Calendly Configuration Section */}
+              {activeSection === "calendly" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <Calendar className="h-6 w-6 text-purple-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">Calendly Configuration</h2>
+                  </div>
+
+                  {/* Enable Calendly Toggle */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Show Calendly in Sidebar
+                      </label>
+                      <button
+                        onClick={() => setCalendlyEnabled(!calendlyEnabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          calendlyEnabled ? "bg-purple-600" : "bg-gray-300"
+                        } cursor-pointer`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            calendlyEnabled ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Display Text */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Display Text in Sidebar
+                    </label>
+                    <input
+                      type="text"
+                      value={calendlyText}
+                      onChange={(e) => setCalendlyText(e.target.value)}
+                      placeholder="Schedule a Meeting"
+                      maxLength={100}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-700"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      {calendlyText.length}/100 characters
+                    </p>
+                  </div>
+
+                  {/* Behavior Mode */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Behavior Mode
+                    </label>
+                    <div className="space-y-3">
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="calendlyMode"
+                          value="redirect"
+                          checked={calendlyMode === "redirect"}
+                          onChange={(e) => setCalendlyMode(e.target.value)}
+                          className="mr-3 h-4 w-4 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="text-gray-700">Redirect to Calendly (Opens in Schedule Meeting page)</span>
+                      </label>
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="calendlyMode"
+                          value="premium_modal"
+                          checked={calendlyMode === "premium_modal"}
+                          onChange={(e) => setCalendlyMode(e.target.value)}
+                          className="mr-3 h-4 w-4 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="text-gray-700">Show Premium Modal</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Calendly URL Input (only if redirect mode) */}
+                  {calendlyMode === "redirect" && (
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Calendly Link
+                      </label>
+                      <input
+                        type="url"
+                        value={calendlyUrl}
+                        onChange={(e) => setCalendlyUrl(e.target.value)}
+                        placeholder="https://calendly.com/username/meeting-type"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-700"
+                      />
+                      <p className="mt-2 text-xs text-gray-500">
+                        Enter your full Calendly scheduling link (e.g., https://calendly.com/company/consultation)
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={async () => {
+                      if (!selectedChatbotId) {
+                        toast.error("Please select a chatbot first");
+                        return;
+                      }
+                      if (calendlyMode === "redirect" && !calendlyUrl.trim()) {
+                        toast.error("Please enter a Calendly URL when mode is 'Redirect'");
+                        return;
+                      }
+                      if (calendlyMode === "redirect" && calendlyUrl.trim()) {
+                        try {
+                          const urlObj = new URL(calendlyUrl.trim());
+                          if (!urlObj.hostname.includes("calendly.com")) {
+                            toast.error("URL must be a valid Calendly link (e.g., https://calendly.com/username/meeting-type)");
+                            return;
+                          }
+                        } catch (e) {
+                          toast.error("Invalid URL format. Use format like https://calendly.com/username/meeting-type");
+                          return;
+                        }
+                      }
+                      try {
+                        setUpdatingCalendly(true);
+                        await updateChatbotSidebarCalendly(
+                          selectedChatbotId,
+                          calendlyEnabled,
+                          calendlyMode,
+                          calendlyMode === "redirect" ? calendlyUrl.trim() : null,
+                          calendlyText.trim() || "Schedule a Meeting"
+                        );
+                        toast.success("Calendly configuration updated successfully! ✅");
+                      } catch (error) {
+                        console.error("Error updating Calendly config:", error);
+                        toast.error(error.response?.data?.message || "Failed to update Calendly configuration");
+                      } finally {
+                        setUpdatingCalendly(false);
+                      }
+                    }}
+                    disabled={updatingCalendly || !calendlyText.trim()}
+                    className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+                  >
+                    {updatingCalendly ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Calendar className="h-5 w-5 mr-2" />
+                        Update Calendly Settings
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Email Configuration Section */}
+              {activeSection === "email" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <Mail className="h-6 w-6 text-orange-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">Email Configuration</h2>
+                  </div>
+
+                  {/* Enable Email Toggle */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Show Email in Sidebar
+                      </label>
+                      <button
+                        onClick={() => setEmailEnabled(!emailEnabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          emailEnabled ? "bg-orange-600" : "bg-gray-300"
+                        } cursor-pointer`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            emailEnabled ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Display Text */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Display Text in Sidebar
+                    </label>
+                    <input
+                      type="text"
+                      value={emailText}
+                      onChange={(e) => setEmailText(e.target.value)}
+                      placeholder="Send an Email"
+                      maxLength={100}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-700"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      {emailText.length}/100 characters
+                    </p>
+                  </div>
+
+                  {/* Behavior Mode */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Behavior Mode
+                    </label>
+                    <div className="space-y-3">
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="emailMode"
+                          value="show_templates"
+                          checked={emailMode === "show_templates"}
+                          onChange={(e) => setEmailMode(e.target.value)}
+                          className="mr-3 h-4 w-4 text-orange-600 focus:ring-orange-500"
+                        />
+                        <span className="text-gray-700">Show Email Templates (in ServiceSelection)</span>
+                      </label>
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="emailMode"
+                          value="premium_modal"
+                          checked={emailMode === "premium_modal"}
+                          onChange={(e) => setEmailMode(e.target.value)}
+                          className="mr-3 h-4 w-4 text-orange-600 focus:ring-orange-500"
+                        />
+                        <span className="text-gray-700">Show Premium Modal</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Email Templates Management (only if show_templates mode) */}
+                  {emailMode === "show_templates" && (
+                    <div className="mb-6 border-t pt-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-gray-800">Email Templates</h3>
+                        <button
+                          onClick={handleAddTemplate}
+                          className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add New Template
+                        </button>
+                      </div>
+
+                      {loadingTemplates ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-orange-600" />
+                          <span className="ml-2 text-gray-600">Loading templates...</span>
+                        </div>
+                      ) : emailTemplates.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <Mail className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                          <p>No email templates yet. Click "Add New Template" to create one.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {emailTemplates.map((template) => (
+                            <div
+                              key={template._id}
+                              className="border border-gray-200 rounded-lg p-4 hover:border-orange-300 transition-colors"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="font-semibold text-gray-800">{template.template_name}</h4>
+                                    {!template.is_active && (
+                                      <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Inactive</span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-600 mb-1">
+                                    <strong>Subject:</strong> {template.email_subject}
+                                  </p>
+                                  <p className="text-xs text-gray-500 line-clamp-2">
+                                    {template.email_body.substring(0, 100)}...
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 ml-4">
+                                  <button
+                                    onClick={() => handleEditTemplate(template)}
+                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Edit template"
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTemplate(template._id)}
+                                    disabled={deletingTemplate === template._id}
+                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                    title="Delete template"
+                                  >
+                                    {deletingTemplate === template._id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Template Form Modal */}
+                  {showTemplateForm && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-semibold text-gray-800">
+                              {editingTemplate ? "Edit Email Template" : "Add New Email Template"}
+                            </h3>
+                            <button
+                              onClick={() => {
+                                setShowTemplateForm(false);
+                                setEditingTemplate(null);
+                                setTemplateFormData({
+                                  template_name: "",
+                                  email_subject: "",
+                                  email_body: "",
+                                  is_active: true,
+                                  order: 0,
+                                });
+                              }}
+                              className="text-gray-400 hover:text-gray-600"
+                            >
+                              <X className="h-5 w-5" />
+                            </button>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Template Name *
+                              </label>
+                              <input
+                                type="text"
+                                value={templateFormData.template_name}
+                                onChange={(e) =>
+                                  setTemplateFormData({ ...templateFormData, template_name: e.target.value })
+                                }
+                                placeholder="Event Information"
+                                maxLength={100}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-700"
+                              />
+                              <p className="mt-1 text-xs text-gray-500">
+                                {templateFormData.template_name.length}/100 characters
+                              </p>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Email Subject *
+                              </label>
+                              <input
+                                type="text"
+                                value={templateFormData.email_subject}
+                                onChange={(e) =>
+                                  setTemplateFormData({ ...templateFormData, email_subject: e.target.value })
+                                }
+                                placeholder="PlastiWorld 2026 Event Details"
+                                maxLength={200}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-700"
+                              />
+                              <p className="mt-1 text-xs text-gray-500">
+                                {templateFormData.email_subject.length}/200 characters
+                              </p>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Email Body *
+                              </label>
+                              <textarea
+                                value={templateFormData.email_body}
+                                onChange={(e) =>
+                                  setTemplateFormData({ ...templateFormData, email_body: e.target.value })
+                                }
+                                placeholder="Dear {name},&#10;&#10;Thank you for your interest in PlastiWorld 2026..."
+                                rows={10}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-700 resize-none"
+                              />
+                              <p className="mt-1 text-xs text-gray-500">
+                                You can use variables like {"{name}"}, {"{email}"}, {"{phone}"} in the body
+                              </p>
+                            </div>
+
+                            <div className="flex items-center">
+                              <input
+                                type="checkbox"
+                                id="templateActive"
+                                checked={templateFormData.is_active}
+                                onChange={(e) =>
+                                  setTemplateFormData({ ...templateFormData, is_active: e.target.checked })
+                                }
+                                className="mr-2 h-4 w-4 text-orange-600 focus:ring-orange-500"
+                              />
+                              <label htmlFor="templateActive" className="text-sm text-gray-700">
+                                Template is active (will be shown to users)
+                              </label>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 mt-6">
+                            <button
+                              onClick={handleSaveTemplate}
+                              disabled={savingTemplate || !templateFormData.template_name.trim() || !templateFormData.email_subject.trim() || !templateFormData.email_body.trim()}
+                              className="flex-1 px-6 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            >
+                              {savingTemplate ? (
+                                <>
+                                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                                  Saving...
+                                </>
+                              ) : (
+                                <>
+                                  <Mail className="h-5 w-5 mr-2" />
+                                  {editingTemplate ? "Update Template" : "Create Template"}
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowTemplateForm(false);
+                                setEditingTemplate(null);
+                                setTemplateFormData({
+                                  template_name: "",
+                                  email_subject: "",
+                                  email_body: "",
+                                  is_active: true,
+                                  order: 0,
+                                });
+                              }}
+                              className="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={async () => {
+                      if (!selectedChatbotId) {
+                        toast.error("Please select a chatbot first");
+                        return;
+                      }
+                      try {
+                        setUpdatingEmail(true);
+                        await updateChatbotSidebarEmail(
+                          selectedChatbotId,
+                          emailEnabled,
+                          emailMode,
+                          emailText.trim() || "Send an Email"
+                        );
+                        toast.success("Email configuration updated successfully! ✅");
+                      } catch (error) {
+                        console.error("Error updating Email config:", error);
+                        toast.error(error.response?.data?.message || "Failed to update Email configuration");
+                      } finally {
+                        setUpdatingEmail(false);
+                      }
+                    }}
+                    disabled={updatingEmail || !emailText.trim()}
+                    className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+                  >
+                    {updatingEmail ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="h-5 w-5 mr-2" />
+                        Update Email Settings
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Social Media Configuration Section */}
+              {activeSection === "social" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <Share2 className="h-6 w-6 text-indigo-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">Social Media Configuration</h2>
+                  </div>
+
+                  {/* Enable Social Media Toggle */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Show Social Media in Sidebar
+                      </label>
+                      <button
+                        onClick={() => setSocialEnabled(!socialEnabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          socialEnabled ? "bg-indigo-600" : "bg-gray-300"
+                        } cursor-pointer`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            socialEnabled ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Social Media Links Management */}
+                  <div className="mb-6 border-t pt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-800">Social Media Links</h3>
+                      <button
+                        onClick={handleAddSocialLink}
+                        className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add New Link
+                      </button>
+                    </div>
+
+                    {loadingSocialLinks ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+                        <span className="ml-2 text-gray-600">Loading links...</span>
+                      </div>
+                    ) : socialLinks.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Share2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>No social media links yet. Click "Add New Link" to create one.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {socialLinks.map((link) => (
+                          <div
+                            key={link._id}
+                            className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-semibold text-gray-800">
+                                    {link.platform === 'facebook' ? 'Facebook' :
+                                     link.platform === 'instagram' ? 'Instagram' :
+                                     link.platform === 'youtube' ? 'YouTube' :
+                                     link.platform === 'linkedin' ? 'LinkedIn' :
+                                     link.platform === 'twitter' ? 'Twitter/X' :
+                                     link.platform === 'whatsapp' ? 'WhatsApp' :
+                                     link.platform === 'telegram' ? 'Telegram' :
+                                     link.platform === 'pinterest' ? 'Pinterest' :
+                                     link.platform === 'tiktok' ? 'TikTok' :
+                                     link.platform === 'snapchat' ? 'Snapchat' :
+                                     'Custom Link'}
+                                  </span>
+                                  {!link.is_active && (
+                                    <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Inactive</span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600 break-all">{link.url}</p>
+                                <p className="text-xs text-gray-500 mt-1">Order: {link.order}</p>
+                              </div>
+                              <div className="flex items-center gap-2 ml-4">
+                                <button
+                                  onClick={() => handleEditSocialLink(link)}
+                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                  title="Edit link"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteSocialLink(link._id)}
+                                  disabled={deletingSocialLink === link._id}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Delete link"
+                                >
+                                  {deletingSocialLink === link._id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Social Link Form Modal */}
+                  {showSocialLinkForm && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-semibold text-gray-800">
+                              {editingSocialLink ? "Edit Social Media Link" : "Add New Social Media Link"}
+                            </h3>
+                            <button
+                              onClick={() => {
+                                setShowSocialLinkForm(false);
+                                setEditingSocialLink(null);
+                                setSocialLinkFormData({
+                                  url: "",
+                                  platform: "custom",
+                                  is_active: true,
+                                  order: 0,
+                                });
+                                setDetectedPlatform(null);
+                              }}
+                              className="text-gray-400 hover:text-gray-600"
+                            >
+                              <X className="h-5 w-5" />
+                            </button>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Social Media URL *
+                              </label>
+                              <input
+                                type="url"
+                                value={socialLinkFormData.url}
+                                onChange={(e) => handleSocialLinkUrlChange(e.target.value)}
+                                placeholder="https://facebook.com/yourpage"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-700"
+                              />
+                              {detectedPlatform && (
+                                <p className="mt-2 text-sm text-indigo-600">
+                                  ✓ Detected: <strong>{detectedPlatform}</strong>
+                                </p>
+                              )}
+                              <p className="mt-1 text-xs text-gray-500">
+                                Enter the full URL. Platform will be detected automatically, or select manually below.
+                              </p>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Platform *
+                              </label>
+                              <select
+                                value={socialLinkFormData.platform}
+                                onChange={(e) =>
+                                  setSocialLinkFormData({ ...socialLinkFormData, platform: e.target.value })
+                                }
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-700 bg-white"
+                              >
+                                <option value="facebook">Facebook</option>
+                                <option value="instagram">Instagram</option>
+                                <option value="youtube">YouTube</option>
+                                <option value="linkedin">LinkedIn</option>
+                                <option value="twitter">Twitter/X</option>
+                                <option value="whatsapp">WhatsApp</option>
+                                <option value="telegram">Telegram</option>
+                                <option value="custom">Custom Link</option>
+                              </select>
+                              <p className="mt-1 text-xs text-gray-500">
+                                Select the platform. Auto-detection will update this field when you enter a URL.
+                              </p>
+                            </div>
+
+                            <div className="flex items-center">
+                              <input
+                                type="checkbox"
+                                id="socialLinkActive"
+                                checked={socialLinkFormData.is_active}
+                                onChange={(e) =>
+                                  setSocialLinkFormData({ ...socialLinkFormData, is_active: e.target.checked })
+                                }
+                                className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+                              />
+                              <label htmlFor="socialLinkActive" className="text-sm text-gray-700">
+                                Link is active (will be shown in sidebar)
+                              </label>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Display Order
+                              </label>
+                              <input
+                                type="number"
+                                value={socialLinkFormData.order}
+                                onChange={(e) =>
+                                  setSocialLinkFormData({ ...socialLinkFormData, order: parseInt(e.target.value) || 0 })
+                                }
+                                min="0"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-700"
+                              />
+                              <p className="mt-1 text-xs text-gray-500">
+                                Lower numbers appear first in the sidebar
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 mt-6">
+                            <button
+                              onClick={handleSaveSocialLink}
+                              disabled={savingSocialLink || !socialLinkFormData.url.trim()}
+                              className="flex-1 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            >
+                              {savingSocialLink ? (
+                                <>
+                                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                                  Saving...
+                                </>
+                              ) : (
+                                <>
+                                  <Share2 className="h-5 w-5 mr-2" />
+                                  {editingSocialLink ? "Update Link" : "Create Link"}
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowSocialLinkForm(false);
+                                setEditingSocialLink(null);
+                                setSocialLinkFormData({
+                                  url: "",
+                                  platform: "custom",
+                                  is_active: true,
+                                  order: 0,
+                                });
+                                setDetectedPlatform(null);
+                              }}
+                              className="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={async () => {
+                      if (!selectedChatbotId) {
+                        toast.error("Please select a chatbot first");
+                        return;
+                      }
+                      try {
+                        setUpdatingSocial(true);
+                        await updateChatbotSidebarSocial(selectedChatbotId, socialEnabled);
+                        toast.success("Social Media configuration updated successfully! ✅");
+                      } catch (error) {
+                        console.error("Error updating Social Media config:", error);
+                        toast.error(error.response?.data?.message || "Failed to update Social Media configuration");
+                      } finally {
+                        setUpdatingSocial(false);
+                      }
+                    }}
+                    disabled={updatingSocial}
+                    className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+                  >
+                    {updatingSocial ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="h-5 w-5 mr-2" />
+                        Update Social Media Settings
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Branding Configuration Section */}
+              {activeSection === "branding" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <Sparkles className="h-6 w-6 text-amber-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">Branding Configuration</h2>
+                  </div>
+
+                  {/* Enable Branding Toggle */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Show Branding in Sidebar
+                      </label>
+                      <button
+                        onClick={() => setBrandingEnabled(!brandingEnabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          brandingEnabled ? "bg-amber-600" : "bg-gray-300"
+                        } cursor-pointer`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            brandingEnabled ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Branding Text */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Branding Text
+                    </label>
+                    <input
+                      type="text"
+                      value={brandingText}
+                      onChange={(e) => setBrandingText(e.target.value)}
+                      placeholder="Powered by"
+                      maxLength={50}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-700"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      {brandingText.length}/50 characters
+                    </p>
+                  </div>
+
+                  {/* Company Name */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company Name
+                    </label>
+                    <input
+                      type="text"
+                      value={brandingCompany}
+                      onChange={(e) => setBrandingCompany(e.target.value)}
+                      placeholder="Troika Tech"
+                      maxLength={50}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-700"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      {brandingCompany.length}/50 characters
+                    </p>
+                  </div>
+
+                  {/* Logo URL */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Logo URL (Optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={brandingLogoUrl}
+                      onChange={(e) => setBrandingLogoUrl(e.target.value)}
+                      placeholder="https://example.com/logo.png"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-700"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Enter the full URL to your logo image. Leave empty to hide logo.
+                    </p>
+                  </div>
+
+                  {/* Logo Link */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Logo Click URL (Optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={brandingLogoLink}
+                      onChange={(e) => setBrandingLogoLink(e.target.value)}
+                      placeholder="https://troikatech.in"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-700"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      URL to open when logo is clicked. Leave empty if logo should not be clickable.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      if (!selectedChatbotId) {
+                        toast.error("Please select a chatbot first");
+                        return;
+                      }
+                      try {
+                        setUpdatingBranding(true);
+                        await updateChatbotSidebarBranding(
+                          selectedChatbotId,
+                          brandingEnabled,
+                          brandingText.trim() || "Powered by",
+                          brandingCompany.trim() || "Troika Tech",
+                          brandingLogoUrl.trim() || null,
+                          brandingLogoLink.trim() || null
+                        );
+                        toast.success("Branding configuration updated successfully! ✅");
+                      } catch (error) {
+                        console.error("Error updating Branding config:", error);
+                        toast.error(error.response?.data?.message || "Failed to update Branding configuration");
+                      } finally {
+                        setUpdatingBranding(false);
+                      }
+                    }}
+                    disabled={updatingBranding || !brandingText.trim() || !brandingCompany.trim()}
+                    className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+                  >
+                    {updatingBranding ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-5 w-5 mr-2" />
+                        Update Branding Settings
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Sidebar Header Configuration Section */}
+              {activeSection === "header" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <Heading className="h-6 w-6 text-violet-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">Sidebar Header Configuration</h2>
+                  </div>
+
+                  {/* Enable Header Toggle */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Show Sidebar Header
+                      </label>
+                      <button
+                        onClick={() => setHeaderEnabled(!headerEnabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          headerEnabled ? "bg-violet-600" : "bg-gray-300"
+                        } cursor-pointer`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            headerEnabled ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Header Text */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Header Text
+                    </label>
+                    <input
+                      type="text"
+                      value={headerText}
+                      onChange={(e) => setHeaderText(e.target.value)}
+                      placeholder={selectedChatbot?.name || "Enter header text or leave empty to use chatbot name"}
+                      maxLength={100}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-gray-700"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      {headerText.length}/100 characters. Leave empty to use chatbot name automatically.
+                    </p>
+                  </div>
+
+                  {/* Logo URL */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Header Logo URL (Optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={headerLogoUrl}
+                      onChange={(e) => setHeaderLogoUrl(e.target.value)}
+                      placeholder="https://example.com/logo.png"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-gray-700"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Enter the full URL to your logo image. Leave empty to show text only.
+                    </p>
+                  </div>
+
+                  {/* Logo Link */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Logo Click URL (Optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={headerLogoLink}
+                      onChange={(e) => setHeaderLogoLink(e.target.value)}
+                      placeholder="https://example.com"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-gray-700"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      URL to open when logo is clicked. Leave empty if logo should not be clickable.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      if (!selectedChatbotId) {
+                        toast.error("Please select a chatbot first");
+                        return;
+                      }
+                      try {
+                        setUpdatingHeader(true);
+                        await updateChatbotSidebarHeader(
+                          selectedChatbotId,
+                          headerEnabled,
+                          headerText.trim() || null,
+                          headerLogoUrl.trim() || null,
+                          headerLogoLink.trim() || null
+                        );
+                        toast.success("Sidebar Header configuration updated successfully! ✅");
+                      } catch (error) {
+                        console.error("Error updating Header config:", error);
+                        toast.error(error.response?.data?.message || "Failed to update Sidebar Header configuration");
+                      } finally {
+                        setUpdatingHeader(false);
+                      }
+                    }}
+                    disabled={updatingHeader}
+                    className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+                  >
+                    {updatingHeader ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Heading className="h-5 w-5 mr-2" />
+                        Update Sidebar Header Settings
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Custom Navigation Configuration Section */}
+              {activeSection === "custom-nav" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <Navigation className="h-6 w-6 text-teal-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">Custom Navigation Configuration</h2>
+                  </div>
+
+                  {/* Enable Custom Navigation Toggle */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center">
+                        <Navigation className="h-5 w-5 text-teal-600 mr-2" />
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-800">Show Custom Navigation in Sidebar</h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Enable to display custom navigation items in the chatbot sidebar
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (!selectedChatbotId) {
+                            toast.error("Please select a chatbot first");
+                            return;
+                          }
+                          try {
+                            setUpdatingCustomNav(true);
+                            await updateChatbotSidebarCustomNav(selectedChatbotId, !customNavEnabled);
+                            setCustomNavEnabled(!customNavEnabled);
+                            toast.success(`Custom Navigation ${!customNavEnabled ? "enabled" : "disabled"} successfully! ✅`);
+                          } catch (error) {
+                            console.error("Error updating custom navigation toggle:", error);
+                            toast.error(error.response?.data?.message || "Failed to update custom navigation toggle");
+                          } finally {
+                            setUpdatingCustomNav(false);
+                          }
+                        }}
+                        disabled={updatingCustomNav}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          customNavEnabled ? "bg-teal-600" : "bg-gray-300"
+                        } ${updatingCustomNav ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            customNavEnabled ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Navigation Items List */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-800">Navigation Items</h3>
+                      <button
+                        onClick={handleAddCustomNavItem}
+                        className="flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add New Item
+                      </button>
+                    </div>
+
+                    {loadingCustomNavItems ? (
+                      <div className="text-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-teal-600" />
+                        <p className="text-gray-500 mt-2">Loading navigation items...</p>
+                      </div>
+                    ) : customNavItems.length === 0 ? (
+                      <div className="text-center py-8 bg-gray-50 rounded-lg">
+                        <Navigation className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-gray-500">No navigation items yet. Click "Add New Item" to create one.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {customNavItems.map((item) => (
+                          <div
+                            key={item._id}
+                            className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-mono text-gray-500">{item.icon_name}</span>
+                                <span className="font-semibold text-gray-800">{item.display_text}</span>
+                                {!item.is_active && (
+                                  <span className="px-2 py-1 text-xs bg-gray-200 text-gray-600 rounded">Inactive</span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-500 mt-1 truncate">{item.redirect_url}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleEditCustomNavItem(item)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Edit"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCustomNavItem(item._id)}
+                                disabled={deletingCustomNavItem === item._id}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                title="Delete"
+                              >
+                                {deletingCustomNavItem === item._id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add/Edit Navigation Item Modal */}
+                  {showCustomNavForm && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                      <div className="bg-white rounded-xl shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-xl font-semibold text-gray-800">
+                            {editingCustomNavItem ? "Edit Navigation Item" : "Add Navigation Item"}
+                          </h3>
+                          <button
+                            onClick={() => {
+                              setShowCustomNavForm(false);
+                              setEditingCustomNavItem(null);
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <X className="h-6 w-6" />
+                          </button>
+                        </div>
+
+                        <div className="space-y-4">
+                          {/* Display Text */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Display Text in Sidebar *
+                            </label>
+                            <input
+                              type="text"
+                              value={customNavFormData.display_text}
+                              onChange={(e) =>
+                                setCustomNavFormData({ ...customNavFormData, display_text: e.target.value })
+                              }
+                              placeholder="e.g., Contact Us, About Us, Services"
+                              maxLength={100}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-700"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">{customNavFormData.display_text.length}/100 characters</p>
+                          </div>
+
+                          {/* Icon Name */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Icon (Font Awesome) *
+                            </label>
+                            <IconSelector
+                              value={customNavFormData.icon_name}
+                              onChange={(iconName) =>
+                                setCustomNavFormData({ ...customNavFormData, icon_name: iconName })
+                              }
+                            />
+                          </div>
+
+                          {/* Redirect URL */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Redirect URL *
+                            </label>
+                            <input
+                              type="text"
+                              value={customNavFormData.redirect_url}
+                              onChange={(e) =>
+                                setCustomNavFormData({ ...customNavFormData, redirect_url: e.target.value })
+                              }
+                              placeholder="https://example.com or /about or tel:+1234567890 or mailto:email@example.com"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-700"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                              Enter full URL, relative path (/about), tel: link, or mailto: link
+                            </p>
+                          </div>
+
+                          {/* Display Order */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Display Order
+                            </label>
+                            <input
+                              type="number"
+                              value={customNavFormData.order}
+                              onChange={(e) =>
+                                setCustomNavFormData({ ...customNavFormData, order: parseInt(e.target.value) || 0 })
+                              }
+                              placeholder="0"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-700"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">Lower numbers appear first in sidebar</p>
+                          </div>
+
+                          {/* Active Toggle */}
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              id="customNavActive"
+                              checked={customNavFormData.is_active}
+                              onChange={(e) =>
+                                setCustomNavFormData({ ...customNavFormData, is_active: e.target.checked })
+                              }
+                              className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                            />
+                            <label htmlFor="customNavActive" className="ml-2 text-sm text-gray-700">
+                              Item is active (will be shown in sidebar)
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 mt-6">
+                          <button
+                            onClick={() => {
+                              setShowCustomNavForm(false);
+                              setEditingCustomNavItem(null);
+                            }}
+                            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveCustomNavItem}
+                            disabled={savingCustomNavItem}
+                            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                          >
+                            {savingCustomNavItem ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Saving...
+                              </>
+                            ) : (
+                              "Save Navigation Item"
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+              {/* Browser Tab Configuration Section */}
+              {activeSection === "tab" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <Monitor className="h-6 w-6 text-indigo-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">Browser Tab Configuration</h2>
+                  </div>
+
+                  {/* Tab Title */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Browser Tab Title
+                    </label>
+                    <input
+                      type="text"
+                      value={tabTitle}
+                      onChange={(e) => setTabTitle(e.target.value)}
+                      placeholder={selectedChatbot?.name || "Enter browser tab title"}
+                      maxLength={100}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-700"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      {tabTitle.length}/100 characters. This will appear in the browser tab. Leave empty to use chatbot name.
+                    </p>
+                  </div>
+
+                  {/* Favicon URL */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Favicon URL (Optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={faviconUrl}
+                      onChange={(e) => setFaviconUrl(e.target.value)}
+                      placeholder="https://example.com/favicon.png"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-700"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Enter the full URL to your favicon image. This will appear in the browser tab. Leave empty to use default.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      if (!selectedChatbotId) {
+                        toast.error("Please select a chatbot first");
+                        return;
+                      }
+                      try {
+                        setUpdatingTab(true);
+                        await updateChatbotUITabConfig(
+                          selectedChatbotId,
+                          tabTitle.trim() || null,
+                          faviconUrl.trim() || null
+                        );
+                        toast.success("Browser Tab configuration updated successfully! ✅");
+                      } catch (error) {
+                        console.error("Error updating Tab config:", error);
+                        toast.error(error.response?.data?.message || "Failed to update Browser Tab configuration");
+                      } finally {
+                        setUpdatingTab(false);
+                      }
+                    }}
+                    disabled={updatingTab}
+                    className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+                  >
+                    {updatingTab ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Monitor className="h-5 w-5 mr-2" />
+                        Update Browser Tab Settings
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+      </div>
+    );
+  }
+
+  // Default table view
+  return (
+    <div className="p-4 md:p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-[#1e3a8a] mb-2">Manage Chatbot UI</h1>
+        <p className="text-gray-600">Manage and configure chatbot UI settings</p>
+      </div>
+
+      {loadingCompanies ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <span className="ml-2 text-gray-600">Loading companies...</span>
+        </div>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-gray-700">
+              <thead className="bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white uppercase tracking-wider">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold">#</th>
+                  <th className="px-4 py-3 text-left font-semibold">Company Name</th>
+                  <th className="px-4 py-3 text-left font-semibold">Username</th>
+                  <th className="px-4 py-3 text-left font-semibold">Email ID</th>
+                  <th className="px-4 py-3 text-left font-semibold">Password</th>
+                  <th className="px-4 py-3 text-left font-semibold">Phone No</th>
+                  <th className="px-4 py-3 text-left font-semibold">Managed By</th>
+                  <th className="px-4 py-3 text-left font-semibold">Chatbot Name</th>
+                  <th className="px-4 py-3 text-center font-semibold">Status</th>
+                  <th className="px-4 py-3 text-center font-semibold">Action UI</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {tableRows.length === 0 ? (
+                  <tr>
+                    <td colSpan="10" className="px-4 py-8 text-center text-gray-500">
+                      No companies found
+                    </td>
+                  </tr>
+                ) : (
+                  tableRows.map((row, idx) => (
+                    <tr
+                      key={`${row.companyId}-${row.chatbotId || 'no-chatbot'}`}
+                      className={`hover:bg-gray-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-teal-50'}`}
+                    >
+                      <td className="px-4 py-2">{row.index}</td>
+                      <td className="px-4 py-2 font-medium">{row.companyName}</td>
+                      <td className="px-4 py-2">
+                        {editingUsername[row.companyId] ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={usernameValues[row.companyId] || ""}
+                              onChange={(e) => setUsernameValues(prev => ({ ...prev, [row.companyId]: e.target.value }))}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm w-32"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => handleUsernameSave(row.companyId)}
+                              disabled={updatingUsername[row.companyId]}
+                              className="text-green-600 hover:text-green-700 disabled:opacity-50"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => handleUsernameCancel(row.companyId)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span>{row.userName || "—"}</span>
+                            <button
+                              onClick={() => handleUsernameEdit(row.companyId)}
+                              className="text-blue-600 hover:text-blue-700"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">{row.email}</td>
+                      <td className="px-4 py-2">
+                        {editingPassword[row.companyId] ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <input
+                                type={showPasswordInput[row.companyId] ? "text" : "password"}
+                                value={passwordValues[row.companyId] || ""}
+                                onChange={(e) => setPasswordValues(prev => ({ ...prev, [row.companyId]: e.target.value }))}
+                                placeholder="New password"
+                                className="px-2 py-1 border border-gray-300 rounded text-sm w-32"
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPasswordInput(prev => ({ ...prev, [row.companyId]: !prev[row.companyId] }))}
+                                className="text-gray-600 hover:text-gray-800 p-1"
+                                title={showPasswordInput[row.companyId] ? "Hide password" : "Show password"}
+                              >
+                                {showPasswordInput[row.companyId] ? (
+                                  <EyeOff size={14} />
+                                ) : (
+                                  <Eye size={14} />
+                                )}
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => handlePasswordSave(row.companyId)}
+                              disabled={updatingPassword[row.companyId]}
+                              className="text-green-600 hover:text-green-700 disabled:opacity-50"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => handlePasswordCancel(row.companyId)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-0.5">
+                            <span className="text-sm">
+                              {showPassword[row.companyId] && decryptedPasswords[row.companyId] 
+                                ? decryptedPasswords[row.companyId] 
+                                : "••••••••"}
+                            </span>
+                            {(() => {
+                              const canDecrypt = canDecryptPassword[row.companyId];
+                              console.log(`[Password UI] Rendering for company ${row.companyId}: canDecrypt=${canDecrypt}`);
+                              return canDecrypt ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleShowPassword(row.companyId)}
+                                  disabled={loadingPassword[row.companyId]}
+                                  className="text-gray-600 hover:text-gray-800 p-0 disabled:opacity-50 ml-0.5"
+                                  title={showPassword[row.companyId] ? "Hide password" : "Show password"}
+                                >
+                                  {loadingPassword[row.companyId] ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                  ) : showPassword[row.companyId] ? (
+                                    <EyeOff size={14} />
+                                  ) : (
+                                    <Eye size={14} />
+                                  )}
+                                </button>
+                              ) : null;
+                            })()}
+                            <button
+                              onClick={() => handlePasswordEdit(row.companyId)}
+                              className="text-blue-600 hover:text-blue-700 p-0 ml-0.5"
+                              title="Edit password"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        {editingPhone[row.companyId] ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="tel"
+                              value={phoneValues[row.companyId] || ""}
+                              onChange={(e) => setPhoneValues(prev => ({ ...prev, [row.companyId]: e.target.value }))}
+                              placeholder="+919876543210"
+                              className="px-2 py-1 border border-gray-300 rounded text-sm w-32"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => handlePhoneSave(row.companyId)}
+                              disabled={updatingPhone[row.companyId]}
+                              className="text-green-600 hover:text-green-700 disabled:opacity-50"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => handlePhoneCancel(row.companyId)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span>{row.phoneNo || "—"}</span>
+                            <button
+                              onClick={() => handlePhoneEdit(row.companyId)}
+                              className="text-blue-600 hover:text-blue-700"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        {editingManagedBy[row.companyId] ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={managedByValues[row.companyId] || ""}
+                              onChange={(e) => setManagedByValues(prev => ({ ...prev, [row.companyId]: e.target.value }))}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm w-32"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => handleManagedByNameSave(row.companyId)}
+                              disabled={updatingManagedBy[row.companyId]}
+                              className="text-green-600 hover:text-green-700 disabled:opacity-50"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => handleManagedByNameCancel(row.companyId)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span>{row.managedByName || "—"}</span>
+                            <button
+                              onClick={() => handleManagedByNameEdit(row.companyId)}
+                              className="text-blue-600 hover:text-blue-700"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">{row.chatbotName}</td>
+                      <td className="px-4 py-3 text-center">
+                        {row.chatbotId ? (
+                          <button
+                            onClick={() => handleStatusToggle(row.chatbotId, row.status)}
+                            disabled={updatingStatus[row.chatbotId]}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              row.status === "active" ? "bg-green-600" : "bg-gray-300"
+                            } ${updatingStatus[row.chatbotId] ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                row.status === "active" ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {row.chatbotId ? (
+                          <button
+                            onClick={() => handleNavigateToUIConfig(row.chatbotId)}
+                            className="px-4 py-2 bg-[#1e3a8a] text-white font-medium rounded-lg hover:bg-[#1e40af] transition-colors shadow-md"
+                          >
+                            Manage UI
+                          </button>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ManageChatbotUIPage;
+
