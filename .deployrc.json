@@ -1,0 +1,23 @@
+{
+  "server": {
+    "host": "13.204.53.119",
+    "user": "ubuntu",
+    "sshKey": "C:\\Users\\USER\\.ssh\\troika-calling-dashboard.pem",
+    "remotePath": "/var/www/ai-chat-admin"
+  },
+  "build": {
+    "command": "npm run build",
+    "outputDir": "dist"
+  },
+  "backup": {
+    "enabled": true,
+    "keepLast": 5
+  },
+  "deployment": {
+    "url": "https://ai-chat-admin.0804.in/",
+    "permissions": {
+      "directories": "755",
+      "files": "644"
+    }
+  }
+}
