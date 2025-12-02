@@ -1,8 +1,8 @@
 import axios from "axios";
+import { API_BASE_URL } from "../config/api.config";
 
 const api = axios.create({
-  baseURL: "https://chat-apiv3.0804.in/api",
-  // baseURL: "http://localhost:5000/api",
+  baseURL: `${API_BASE_URL}/api`,
   withCredentials: true,
 });
 
