@@ -51,7 +51,7 @@ const CompanyTable = ({ companies, refresh, onEditCompany, loading }) => { // ðŸ
   const [selectedCompanyForAdd, setSelectedCompanyForAdd] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const handleCreateChatbot = async (companyId, name, initialCredits) => {
+  const handleCreateChatbot = async (companyId, name, initialCredits, intentConfig = {}) => {
     try {
       // Use the correct endpoint path - backend route is /api/chatbot/create
       // The api interceptor will automatically add the Authorization header
@@ -60,10 +60,20 @@ const CompanyTable = ({ companies, refresh, onEditCompany, loading }) => { // ðŸ
         toast.error("Initial credits is required and must be 0 or greater");
         return;
       }
-      
-      const payload = { companyId, name, initial_credits: initialCredits };
+
+      const payload = {
+        companyId,
+        name,
+        initial_credits: initialCredits,
+        // Intent detection config
+        default_call_keywords: intentConfig.default_call_keywords || [],
+        default_meeting_keywords: intentConfig.default_meeting_keywords || [],
+        call_intent_enabled: intentConfig.call_intent_enabled || false,
+        meeting_intent_enabled: intentConfig.meeting_intent_enabled || false,
+      };
+      console.log("[handleCreateChatbot] Sending payload:", JSON.stringify(payload, null, 2));
       await api.post("/chatbot/create", payload);
-      toast.success(`Chatbot created and ${initialCredits} credits assigned âœ…`);
+      toast.success(`Chatbot created and ${initialCredits} credits assigned`);
       refresh();
     } catch (error) {
       console.error(

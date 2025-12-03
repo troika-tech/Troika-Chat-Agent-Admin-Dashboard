@@ -7,7 +7,11 @@ const EditClientConfigModal = ({ chatbot, onClose }) => {
     demo_link: "",
     default_suggestions: "",
     demo_keywords: "",
-    curtom_intro: "",
+    // Intent detection fields - single field for each
+    default_call_keywords: "",
+    default_meeting_keywords: "",
+    call_intent_enabled: false,
+    meeting_intent_enabled: false,
   });
   const [loading, setLoading] = useState(true);
 
@@ -15,19 +19,23 @@ const EditClientConfigModal = ({ chatbot, onClose }) => {
     if (chatbot?._id) {
       fetchClientConfig(chatbot._id)
         .then((res) => {
-          // console.log("Fetched config:", res.data);
           const data = res.data.config;
           setConfig({
             demo_message: data.demo_message || "",
             demo_link: data.demo_link || "",
             default_suggestions: (data.default_suggestions || []).join(", "),
             demo_keywords: (data.demo_keywords || []).join(", "),
+            // Intent detection - fetch stored keywords
+            default_call_keywords: (data.default_call_keywords || []).join(", "),
+            default_meeting_keywords: (data.default_meeting_keywords || []).join(", "),
+            call_intent_enabled: data.call_intent_enabled || false,
+            meeting_intent_enabled: data.meeting_intent_enabled || false,
           });
-          setLoading(false); // ✅ correctly placed
+          setLoading(false);
         })
         .catch((err) => {
           console.error("Config fetch error", err);
-          setLoading(false); // ✅ also good to prevent modal freeze on error
+          setLoading(false);
         });
     }
   }, [chatbot]);
@@ -45,14 +53,25 @@ const EditClientConfigModal = ({ chatbot, onClose }) => {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
+        // Intent detection - save keywords
+        default_call_keywords: config.default_call_keywords
+          .split(",")
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean),
+        default_meeting_keywords: config.default_meeting_keywords
+          .split(",")
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean),
+        call_intent_enabled: config.call_intent_enabled,
+        meeting_intent_enabled: config.meeting_intent_enabled,
       };
 
       await updateClientConfig(chatbot._id, payload);
-      alert("✅ Client config updated!");
+      alert("Client config updated!");
       onClose();
     } catch (err) {
       console.error("Update error", err);
-      alert("❌ Failed to update config");
+      alert("Failed to update config");
     }
   };
 
@@ -60,9 +79,9 @@ const EditClientConfigModal = ({ chatbot, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-      <div className="bg-white w-full max-w-lg rounded-xl p-6 relative shadow-xl">
+      <div className="bg-white w-full max-w-2xl rounded-xl p-6 relative shadow-xl max-h-[90vh] overflow-y-auto">
         <h2 className="text-xl font-semibold mb-4 text-gray-800">
-          ✏️ Edit Client Config – {chatbot.name}
+          Edit Client Config - {chatbot.name}
         </h2>
 
         <div className="space-y-4">
@@ -116,6 +135,75 @@ const EditClientConfigModal = ({ chatbot, onClose }) => {
                 setConfig({ ...config, demo_keywords: e.target.value })
               }
             />
+          </div>
+
+          {/* Intent Detection Section */}
+          <div className="border-t pt-4 mt-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Intent Detection Settings</h3>
+
+            {/* Call Intent */}
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <label className="font-medium text-gray-700">Call Intent Detection</label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.call_intent_enabled}
+                    onChange={(e) =>
+                      setConfig({ ...config, call_intent_enabled: e.target.checked })
+                    }
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1e3a8a]"></div>
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">
+                  Call Keywords (comma-separated)
+                </label>
+                <textarea
+                  className="w-full p-2 text-sm border border-gray-300 rounded"
+                  rows={3}
+                  value={config.default_call_keywords}
+                  onChange={(e) =>
+                    setConfig({ ...config, default_call_keywords: e.target.value })
+                  }
+                  placeholder="call me, call back, schedule a call, ring me..."
+                />
+              </div>
+            </div>
+
+            {/* Meeting Intent */}
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <label className="font-medium text-gray-700">Meeting Intent Detection</label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.meeting_intent_enabled}
+                    onChange={(e) =>
+                      setConfig({ ...config, meeting_intent_enabled: e.target.checked })
+                    }
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1e3a8a]"></div>
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">
+                  Meeting Keywords (comma-separated)
+                </label>
+                <textarea
+                  className="w-full p-2 text-sm border border-gray-300 rounded"
+                  rows={3}
+                  value={config.default_meeting_keywords}
+                  onChange={(e) =>
+                    setConfig({ ...config, default_meeting_keywords: e.target.value })
+                  }
+                  placeholder="schedule a meeting, book a demo, google meet, zoom call..."
+                />
+              </div>
+            </div>
           </div>
         </div>
 
