@@ -22,6 +22,11 @@ import AnalyticsPage from "./pages/AnalyticsPage";
 import ApiTest from "./components/ApiTest";
 import "./App.css";
 import CustomizePage from "./pages/CustomizePage";
+import ManageChatbotUIPage from "./pages/ManageChatbotUIPage";
+import ManageSidebarPage from "./pages/ManageSidebarPage";
+import EmbedScriptPage from "./pages/EmbedScriptPage";
+import CreditHistoryPage from "./pages/CreditHistoryPage";
+import AccountDeactivatedPage from "./pages/AccountDeactivatedPage";
 
 function App() {
   // REMOVED: The <Router> component was removed from here.
@@ -32,6 +37,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/api-test" element={<ApiTest />} />
+        <Route path="/account-deactivated" element={<AccountDeactivatedPage />} />
 
         {/* Admin routes */}
         <Route
@@ -47,6 +53,10 @@ function App() {
           <Route path="companies" element={<CompaniesPage />} />
           <Route path="chatbots" element={<ChatbotPage />} />
           <Route path="config" element={<ClientConfigPage />} />
+          <Route path="manage-chatbot-ui" element={<ManageChatbotUIPage />} />
+          <Route path="manage-sidebar" element={<ManageSidebarPage />} />
+          <Route path="embed-script" element={<EmbedScriptPage />} />
+          <Route path="credit-history" element={<CreditHistoryPage />} />
           <Route
             path="manage-admins"
             element={
@@ -124,6 +134,7 @@ function App() {
           }
         />
 
+        {/* Catch-all route - must be last */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

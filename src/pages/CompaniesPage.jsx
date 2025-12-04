@@ -53,7 +53,7 @@ const CompaniesPage = () => {
       <div className="p-4 md:p-6">
         {/* --- ADDED: Enhanced Page Header --- */}
         <header className="flex flex-col sm:flex-row justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 self-start sm:self-center">
+          <h1 className="text-3xl font-bold text-[#1e3a8a] self-start sm:self-center">
             Manage Companies
           </h1>
           <div className="flex items-center gap-4 mt-4 sm:mt-0 w-full sm:w-auto">
@@ -67,12 +67,12 @@ const CompaniesPage = () => {
                 placeholder="Search companies..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] shadow-sm"
               />
             </div>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 bg-[#1e3a8a] text-white font-semibold rounded-lg hover:bg-[#1e40af] transition-colors shadow-md"
             >
               <Plus size={18} />
               Add Company

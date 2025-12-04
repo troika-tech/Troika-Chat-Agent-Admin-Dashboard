@@ -297,7 +297,7 @@ const AnalyticsPage = () => {
           <div className="p-6">
             {/* Page Header */}
             <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Analytics</h1>
+              <h1 className="text-3xl font-bold text-[#1e3a8a] mb-2">Analytics</h1>
               <p className="text-gray-500">View and analyze your agent performance metrics</p>
             </div>
 

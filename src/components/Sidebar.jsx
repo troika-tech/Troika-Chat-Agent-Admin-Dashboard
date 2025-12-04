@@ -6,10 +6,12 @@ import {
   Building2,
   Bot,
   LogOut,
-  Settings,
   ShieldCheck,
   Menu,
   X,
+  Palette,
+  Code,
+  History,
 } from "lucide-react";
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -17,10 +19,10 @@ const Sidebar = ({ isOpen, onClose }) => {
   const { user, logout } = useAuth();
 
   const navItemClass = ({ isActive }) =>
-    `flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+    `flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
       isActive
-        ? "bg-blue-100 text-blue-600 font-semibold shadow-sm"
-        : "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+        ? "bg-blue-500 text-white font-semibold shadow-md"
+        : "text-white/80 hover:bg-blue-600/50 hover:text-white"
     }`;
 
   // Helper to get initials from name
@@ -42,23 +44,23 @@ const Sidebar = ({ isOpen, onClose }) => {
       )}
       
       {/* Sidebar */}
-      <aside className={`h-screen fixed w-64 bg-white border-r border-gray-200 p-4 flex flex-col justify-between shadow-md z-50 transition-transform duration-300 overflow-hidden ${
+      <aside className={`h-screen fixed w-64 bg-[#1e3a8a] border-r border-blue-800 p-4 flex flex-col justify-between shadow-2xl z-50 transition-transform duration-300 overflow-hidden ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       } md:translate-x-0`}>
       <div className="flex flex-col h-full">
         <div className="flex-shrink-0">
-          <h2 className="text-2xl font-bold text-blue-600 mb-6 text-center tracking-wide">
+          <h2 className="text-2xl font-bold text-white mb-6 text-center tracking-wide">
             Supa Agent
           </h2>
 
           {/* --- ADDED: Profile Info Section --- */}
           {user && (
-            <div className="flex flex-col items-center mb-6 border-b border-gray-200 pb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-teal-400 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-2 shadow-lg">
+            <div className="flex flex-col items-center mb-6 border-b border-blue-700/50 pb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-teal-400 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-2 shadow-lg ring-4 ring-blue-500/30">
                 {getInitials(user.name)}
               </div>
-              <p className="font-semibold text-gray-800 text-md">{user.name}</p>
-              <p className="text-xs text-white bg-slate-700 rounded-full px-3 py-1 mt-1 font-medium tracking-wide">
+              <p className="font-semibold text-white text-md">{user.name}</p>
+              <p className="text-xs text-white bg-blue-600 rounded-full px-3 py-1 mt-1 font-medium tracking-wide">
                 {user.isSuperAdmin ? "Super Admin" : "Admin"}
               </p>
             </div>
@@ -82,9 +84,19 @@ const Sidebar = ({ isOpen, onClose }) => {
             Manage Chatbots
           </NavLink>
 
-          <NavLink to="/dashboard/config" className={navItemClass}>
-            <Settings className="mr-3 h-5 w-5" />
-            Client Config
+          <NavLink to="/dashboard/manage-chatbot-ui" className={navItemClass}>
+            <Palette className="mr-3 h-5 w-5" />
+            Manage Chatbot UI
+          </NavLink>
+
+          <NavLink to="/dashboard/embed-script" className={navItemClass}>
+            <Code className="mr-3 h-5 w-5" />
+            Embed Script
+          </NavLink>
+
+          <NavLink to="/dashboard/credit-history" className={navItemClass}>
+            <History className="mr-3 h-5 w-5" />
+            Credit History
           </NavLink>
 
           {/* This link is now only visible to super admins */}
@@ -100,7 +112,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       <div className="flex-shrink-0">
         <button
           onClick={logout} // Use the logout function from the context
-          className="flex cursor-pointer items-center px-4 py-2 rounded-lg text-sm font-medium text-red-500 hover:text-white hover:bg-red-500 transition-all"
+          className="flex cursor-pointer items-center px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:text-white hover:bg-red-600 transition-all duration-300 w-full"
         >
           <LogOut className="mr-3 h-5 w-5" />
           Logout

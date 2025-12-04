@@ -8,6 +8,8 @@ const AddCompanyModal = ({ onClose, onSuccess }) => {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [email, setEmail] = useState("");
+  const [userName, setUserName] = useState("");
+  const [phoneNo, setPhoneNo] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -31,7 +33,7 @@ const AddCompanyModal = ({ onClose, onSuccess }) => {
       const token = localStorage.getItem("adminToken");
       await api.post(
         "/company/create",
-        { name, url, email, password },
+        { name, url, email, userName, phoneNo, password },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success("Company added successfully.");
@@ -61,9 +63,9 @@ const AddCompanyModal = ({ onClose, onSuccess }) => {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: -20 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
-          className="bg-white/80 backdrop-blur-md border border-white/40 shadow-2xl rounded-2xl p-8 w-full max-w-md"
+          className="bg-white border border-gray-200 shadow-2xl rounded-xl p-8 w-full max-w-md"
         >
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">
+          <h2 className="text-2xl font-bold text-[#1e3a8a] mb-1">
             Add New Company
           </h2>
           <p className="text-sm text-gray-500 mb-6">
@@ -72,23 +74,36 @@ const AddCompanyModal = ({ onClose, onSuccess }) => {
 
           <div className="space-y-4">
             <input
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-white/70 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+              className="w-full px-4 py-2 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] transition-all shadow-sm"
               placeholder="Company Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
             <input
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-white/70 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+              className="w-full px-4 py-2 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] transition-all shadow-sm"
               placeholder="Domain"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />
             <input
               type="email"
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-white/70 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+              className="w-full px-4 py-2 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] transition-all shadow-sm"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+            />
+            <input
+              className="w-full px-4 py-2 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] transition-all shadow-sm"
+              placeholder="User Name"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+            />
+            <input
+              type="tel"
+              className="w-full px-4 py-2 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] transition-all shadow-sm"
+              placeholder="Phone No"
+              value={phoneNo}
+              onChange={(e) => setPhoneNo(e.target.value)}
             />
 
             {/* Password Field */}
@@ -157,8 +172,8 @@ const AddCompanyModal = ({ onClose, onSuccess }) => {
               disabled={loading}
               className={`px-6 py-2 rounded-xl text-white font-medium shadow-md transition-all ${
                 loading
-                  ? "bg-gradient-to-r from-blue-400 to-teal-300 opacity-60 cursor-not-allowed"
-                  : "bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-500 hover:to-teal-400"
+                  ? "bg-[#1e3a8a]/60 cursor-not-allowed"
+                  : "bg-[#1e3a8a] hover:bg-[#1e40af]"
               }`}
             >
               {loading ? "Adding..." : "Add Company"}

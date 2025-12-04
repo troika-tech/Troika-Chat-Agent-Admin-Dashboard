@@ -27,7 +27,7 @@ const SessionModal = ({ sessionId, messages, onClose }) => {
               className="p-5 rounded-2xl shadow-sm border border-gray-200 bg-white hover:shadow-md transition duration-200"
             >
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-semibold text-blue-700 uppercase tracking-wide">
+                <span className="text-sm font-semibold text-[#1e3a8a] uppercase tracking-wide">
                   {msg.sender}
                 </span>
                 <span className="text-xs text-gray-500">

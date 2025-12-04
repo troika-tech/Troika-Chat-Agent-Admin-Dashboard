@@ -115,12 +115,12 @@ const ManageAdminsPage = () => {
   return (
     <>
       <div className="p-4 md:p-8">
-        <h1 className="text-3xl font-bold mb-8">Manage Admins</h1>
+        <h1 className="text-3xl font-bold mb-8 text-[#1e3a8a]">Manage Admins</h1>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Form Card */}
           <div className="lg:col-span-1">
-            <div className="w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
-              <h2 className="text-2xl font-bold text-center mb-6 flex items-center justify-center gap-2">
+            <div className="w-full bg-white rounded-xl shadow-lg p-8 border border-gray-200">
+              <h2 className="text-2xl font-bold text-center mb-6 flex items-center justify-center gap-2 text-[#1e3a8a]">
                 <UserPlus size={24} /> Add New Admin
               </h2>
               <form onSubmit={handleCreateSubmit} className="space-y-5">
@@ -129,7 +129,7 @@ const ManageAdminsPage = () => {
                   placeholder="Admin Name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#1e3a8a] shadow-sm"
                   required
                 />
                 <input
@@ -137,7 +137,7 @@ const ManageAdminsPage = () => {
                   placeholder="Admin Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#1e3a8a] shadow-sm"
                   required
                 />
                 <div className="relative">
@@ -146,7 +146,7 @@ const ManageAdminsPage = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
-                    className="w-full p-3 rounded-lg border border-gray-300 pr-10 focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 rounded-lg border border-gray-300 pr-10 focus:ring-2 focus:ring-[#1e3a8a] shadow-sm"
                     required
                   />
                   <button
@@ -163,7 +163,7 @@ const ManageAdminsPage = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm Password"
-                    className="w-full p-3 rounded-lg border border-gray-300 pr-10 focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 rounded-lg border border-gray-300 pr-10 focus:ring-2 focus:ring-[#1e3a8a] shadow-sm"
                     required
                   />
                   <button
@@ -184,7 +184,7 @@ const ManageAdminsPage = () => {
                     id="isSuperAdmin"
                     checked={isSuperAdmin}
                     onChange={(e) => setIsSuperAdmin(e.target.checked)}
-                    className="h-5 w-5 rounded text-blue-600 focus:ring-blue-500"
+                    className="h-5 w-5 rounded text-[#1e3a8a] focus:ring-[#1e3a8a]"
                   />
                   <label
                     htmlFor="isSuperAdmin"
@@ -196,7 +196,7 @@ const ManageAdminsPage = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`w-full bg-gradient-to-r from-blue-600 to-teal-500 text-white py-2.5 rounded-lg font-semibold transition-all shadow-md ${
+                  className={`w-full bg-[#1e3a8a] hover:bg-[#1e40af] text-white py-2.5 rounded-lg font-semibold transition-all shadow-md ${
                     loading ? "opacity-60" : "hover:shadow-lg"
                   }`}
                 >
@@ -208,9 +208,9 @@ const ManageAdminsPage = () => {
 
           {/* Admin List */}
           <div className="lg:col-span-2">
-            <div className="overflow-x-auto bg-white border border-gray-200 rounded-lg shadow-lg">
+            <div className="overflow-x-auto bg-white border border-gray-200 rounded-xl shadow-lg">
               <table className="min-w-full text-sm text-gray-700">
-                <thead className="bg-slate-800 text-white text-left uppercase tracking-wider">
+                <thead className="bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white text-left uppercase tracking-wider">
                   <tr>
                     <th className="p-4 font-semibold">Name</th>
                     <th className="p-4 font-semibold">Email</th>

@@ -1081,11 +1081,11 @@ export default function MessageHistoryPage() {
         {/* Enhanced Header */}
         <div className="mb-4">
           <div className="flex items-center gap-3 mb-2">
-            <div className="bg-gradient-to-r from-[#3a2d9c] to-[#017977] text-white p-2 rounded-xl shadow-md">
+            <div className="bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white p-2 rounded-xl shadow-md">
               <Mail className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-2xl font-bold text-gray-800">
+              <h2 className="text-2xl font-bold text-[#1e3a8a]">
                 Message History
               </h2>
             </div>

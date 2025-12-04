@@ -474,34 +474,34 @@ const ChatbotCustomizationPage = () => {
         {/* CHATBOT DETAILS */}
         {chatbotDetailsLoading ? (
           <motion.div
-            className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200 shadow-sm"
+            className="bg-gradient-to-r from-[#1e3a8a]/5 to-[#2563eb]/5 p-6 rounded-xl border border-[#1e3a8a]/20 shadow-sm"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#1e3a8a] to-[#2563eb] rounded-lg flex items-center justify-center">
                 <MessageSquare size={20} className="text-white" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-800">Chatbot Details</h2>
+                <h2 className="text-lg font-semibold text-[#1e3a8a]">Chatbot Details</h2>
                 <p className="text-sm text-gray-600">Loading chatbot information...</p>
               </div>
             </div>
             <div className="animate-pulse space-y-3">
-              <div className="h-4 bg-blue-200 rounded w-3/4"></div>
-              <div className="h-4 bg-blue-200 rounded w-1/2"></div>
+              <div className="h-4 bg-[#1e3a8a]/20 rounded w-3/4"></div>
+              <div className="h-4 bg-[#1e3a8a]/20 rounded w-1/2"></div>
             </div>
           </motion.div>
         ) : chatbotDetails ? (
           <motion.div
-            className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200 shadow-sm"
+            className="bg-gradient-to-r from-[#1e3a8a]/5 to-[#2563eb]/5 p-6 rounded-xl border border-[#1e3a8a]/20 shadow-sm"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#1e3a8a] to-[#2563eb] rounded-lg flex items-center justify-center">
                 <MessageSquare size={20} className="text-white" />
               </div>
                               <div>
@@ -528,7 +528,7 @@ const ChatbotCustomizationPage = () => {
                         navigator.clipboard.writeText(chatbotDetails._id);
                         toast.success("Chatbot ID copied to clipboard!");
                       }}
-                      className="p-1 hover:bg-blue-100 rounded transition-colors"
+                      className="p-1 hover:bg-[#1e3a8a]/10 rounded transition-colors"
                       title="Copy ID"
                     >
                       <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

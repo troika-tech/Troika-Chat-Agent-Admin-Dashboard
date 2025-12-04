@@ -85,9 +85,9 @@ const CompanyModal = ({ company, onClose, refresh }) => {
   if (!company) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
-      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl">
-        <h2 className="text-2xl font-bold mb-6">Edit Company</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-2xl border border-gray-200">
+        <h2 className="text-2xl font-bold mb-6 text-[#1e3a8a]">Edit Company</h2>
         <form onSubmit={handleSubmit}>
           <div className="space-y-6">
             <div>
@@ -100,7 +100,7 @@ const CompanyModal = ({ company, onClose, refresh }) => {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+                className="shadow appearance-none border border-gray-300 rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] text-base"
                 required
               />
             </div>
@@ -114,7 +114,7 @@ const CompanyModal = ({ company, onClose, refresh }) => {
                 name="url"
                 value={formData.url}
                 onChange={handleChange}
-                className="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+                className="shadow appearance-none border border-gray-300 rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] text-base"
                 required
               />
             </div>
@@ -157,7 +157,7 @@ const CompanyModal = ({ company, onClose, refresh }) => {
                 name="confirmPassword"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400 text-base pr-12"
+                className="shadow appearance-none border border-gray-300 rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] text-base pr-12"
                 placeholder="••••••••"
               />
               <button
@@ -185,7 +185,7 @@ const CompanyModal = ({ company, onClose, refresh }) => {
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow hover:scale-105 transition-transform"
+              className="px-5 py-2.5 rounded-lg bg-[#1e3a8a] hover:bg-[#1e40af] text-white shadow-md transition-colors"
             >
               Save Changes
             </button>

@@ -1,8 +1,26 @@
 @import url('https://fonts.googleapis.com/css2?family=Amarnath:wght@300;400;500;700&display=swap');
 @import "tailwindcss";
 
+/* Blue/Teal Dashboard Theme Color Palette */
+@theme {
+  /* Primary Colors - Blue Theme */
+  --color-primary: #2563eb;
+  --color-primary-dark: #1e40af;
+  --color-secondary: #0ea5e9;
+  --color-teal: #14b8a6;
+  --color-info: #06b6d4;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-light: #e0f2fe;
+  --color-dark: #1e293b;
+  --color-sidebar: #1e3a8a;
+  --color-sidebar-dark: #1e40af;
+}
+
 body {
   font-family: 'Amarnath', sans-serif;
+  background-color: #e0f2fe;
 }
 
 /* Desktop-specific improvements */

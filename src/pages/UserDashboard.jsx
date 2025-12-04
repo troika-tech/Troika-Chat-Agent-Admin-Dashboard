@@ -234,6 +234,16 @@ const UserDashboard = () => {
     };
   }, []);
 
+  // Helper function to handle 403 errors (account deactivated)
+  const handle403Error = (err) => {
+    if (err.response?.status === 403) {
+      localStorage.removeItem("token");
+      window.location.href = "/account-deactivated";
+      return true; // Indicates error was handled
+    }
+    return false; // Error not handled
+  };
+
   // Enhanced Data Fetching Functions
   const fetchSubscription = async (chatbotId) => {
     try {
@@ -249,6 +259,7 @@ const UserDashboard = () => {
 
       setPlan(subscriptionData);
     } catch (err) {
+      if (handle403Error(err)) return;
       toast.error("Failed to fetch subscription");
     }
   };
@@ -271,6 +282,16 @@ const UserDashboard = () => {
       ]);
 
       // Check each result individually
+
+      // Check for 403 errors in rejected promises
+      const rejectedPromises = [emailsRes, subscriptionRes, messagesRes, sessionsRes].filter(r => r.status === 'rejected');
+      for (const rejected of rejectedPromises) {
+        if (rejected.reason?.response?.status === 403) {
+          localStorage.removeItem("token");
+          window.location.href = "/account-deactivated";
+          return;
+        }
+      }
 
       // Handle failed requests
       let hasErrors = false;
@@ -765,6 +786,14 @@ const UserDashboard = () => {
         window.location.href = "/";
         return;
       }
+      
+      // Handle 403 Forbidden (account deactivated)
+      if (err.response?.status === 403) {
+        // Redirect to deactivated page immediately
+        localStorage.removeItem("token");
+        window.location.href = "/account-deactivated";
+        return;
+      }
 
       toast.error("Failed to load dashboard data");
       setPlan(null); // Ensure no crash
@@ -785,7 +814,13 @@ const UserDashboard = () => {
           await fetchAnalytics(company.chatbot_id);
           setLastUpdated(new Date());
         } catch (err) {
-          // Real-time update failed silently
+          // Check for 403 error (account deactivated)
+          if (err.response?.status === 403) {
+            localStorage.removeItem("token");
+            window.location.href = "/account-deactivated";
+            return;
+          }
+          // Real-time update failed silently for other errors
         }
       }
     }, 30000); // Update every 30 seconds

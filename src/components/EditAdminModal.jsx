@@ -50,9 +50,9 @@ const EditAdminModal = ({ admin, onClose, refresh }) => {
   if (!admin) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
-      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
-        <h2 className="text-2xl font-bold mb-6">Edit Admin: {admin.name}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-lg border border-gray-200">
+        <h2 className="text-2xl font-bold mb-6 text-[#1e3a8a]">Edit Admin: {admin.name}</h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="name" className="block text-sm font-bold text-gray-700 mb-2">
@@ -64,7 +64,7 @@ const EditAdminModal = ({ admin, onClose, refresh }) => {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1e3a8a] shadow-sm"
               required
             />
           </div>
@@ -78,7 +78,7 @@ const EditAdminModal = ({ admin, onClose, refresh }) => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1e3a8a] shadow-sm"
               required
             />
           </div>
@@ -93,7 +93,7 @@ const EditAdminModal = ({ admin, onClose, refresh }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full p-3 border border-gray-300 rounded-lg pr-12 focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 border border-gray-300 rounded-lg pr-12 focus:ring-2 focus:ring-[#1e3a8a] shadow-sm"
             />
             <button
               type="button"
@@ -114,7 +114,7 @@ const EditAdminModal = ({ admin, onClose, refresh }) => {
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              className="px-6 py-2 rounded-lg bg-[#1e3a8a] text-white hover:bg-[#1e40af] disabled:opacity-50 shadow-md transition-colors"
             >
               {loading ? "Saving..." : "Save Changes"}
             </button>

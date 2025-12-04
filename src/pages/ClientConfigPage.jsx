@@ -201,7 +201,7 @@ export default function ClientConfigPage() {
                 </button>
                 <button
                   onClick={saveLinkIntents}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-md"
+                  className="bg-[#1e3a8a] hover:bg-[#1e40af] text-white px-4 py-2 rounded-lg shadow-md transition-colors"
                 >
                   Save
                 </button>
@@ -272,7 +272,7 @@ export default function ClientConfigPage() {
                 </button>
                 <button
                   onClick={saveUiSuggestions}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-md"
+                  className="bg-[#1e3a8a] hover:bg-[#1e40af] text-white px-4 py-2 rounded-lg shadow-md transition-colors"
                 >
                   Save
                 </button>

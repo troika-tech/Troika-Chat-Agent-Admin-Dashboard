@@ -26,9 +26,9 @@ const SkeletonRow = () => (
 );
 
 const TableSkeleton = ({ rows = 5 }) => (
-  <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 backdrop-blur-md bg-white/60 table-container hide-scrollbar">
+  <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 bg-white table-container hide-scrollbar">
     <table className="w-full text-xs md:text-sm text-left text-gray-700 min-w-[600px]">
-      <thead className="bg-gradient-to-r from-slate-700 to-slate-900 text-white uppercase tracking-wider">
+      <thead className="bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white uppercase tracking-wider">
         <tr>
           <th className="p-2 md:p-4">Name</th>
           <th className="p-2 md:p-4">Domain</th>
@@ -51,19 +51,19 @@ const CompanyTable = ({ companies, refresh, onEditCompany, loading }) => { // ðŸ
   const [selectedCompanyForAdd, setSelectedCompanyForAdd] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const handleCreateChatbot = async (companyId, name) => {
+  const handleCreateChatbot = async (companyId, name, initialCredits) => {
     try {
-      const token = localStorage.getItem("adminToken");
-      await api.post(
-        "/chatbot/create",
-        { companyId, name },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      toast.success("Chatbot created âœ…");
+      // Use the correct endpoint path - backend route is /api/chatbot/create
+      // The api interceptor will automatically add the Authorization header
+      // initialCredits is now required
+      if (initialCredits === null || initialCredits === undefined || initialCredits < 0) {
+        toast.error("Initial credits is required and must be 0 or greater");
+        return;
+      }
+      
+      const payload = { companyId, name, initial_credits: initialCredits };
+      await api.post("/chatbot/create", payload);
+      toast.success(`Chatbot created and ${initialCredits} credits assigned âœ…`);
       refresh();
     } catch (error) {
       console.error(
@@ -80,10 +80,8 @@ const CompanyTable = ({ companies, refresh, onEditCompany, loading }) => { // ðŸ
       return;
 
     try {
-      const token = localStorage.getItem("adminToken");
-      await api.delete(`/chatbot/delete/${chatbotId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // The api interceptor will automatically add the Authorization header
+      await api.delete(`/chatbot/delete/${chatbotId}`);
       toast.success("Chatbot deleted");
       refresh();
     } catch (error) {
@@ -102,10 +100,8 @@ const CompanyTable = ({ companies, refresh, onEditCompany, loading }) => { // ðŸ
       return;
 
     try {
-      const token = localStorage.getItem("adminToken");
-      await api.delete(`/company/delete/${companyId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // The api interceptor will automatically add the Authorization header
+      await api.delete(`/company/delete/${companyId}`);
       toast.success("Company deleted");
       refresh();
     } catch (error) {
@@ -120,9 +116,9 @@ const CompanyTable = ({ companies, refresh, onEditCompany, loading }) => { // ðŸ
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 backdrop-blur-md bg-white/60 table-container hide-scrollbar">
+    <div className="overflow-x-auto rounded-xl shadow-lg border border-gray-200 bg-white table-container hide-scrollbar">
       <table className="w-full text-xs md:text-sm text-left text-gray-700 min-w-[600px]">
-        <thead className="bg-gradient-to-r from-slate-700 to-slate-900 text-white uppercase tracking-wider">
+        <thead className="bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white uppercase tracking-wider">
           <tr>
             <th className="p-2 md:p-4">Name</th>
             <th className="p-2 md:p-4">Domain</th>
@@ -136,12 +132,12 @@ const CompanyTable = ({ companies, refresh, onEditCompany, loading }) => { // ðŸ
             <tr
               key={company._id}
               onClick={() => onEditCompany(company)}
-              className={`transition-all duration-200 hover:shadow-md hover:bg-blue-50/90 cursor-pointer ${
-                index % 2 === 0 ? "bg-white/70" : "bg-gray-50/70"
+              className={`transition-all duration-200 hover:shadow-md hover:bg-blue-50 cursor-pointer ${
+                index % 2 === 0 ? "bg-white" : "bg-gray-50"
               }`}
             >
               <td className="p-2 md:p-4 font-medium">{company.name}</td>
-              <td className="p-2 md:p-4 text-blue-600 underline">{company.url}</td>
+              <td className="p-2 md:p-4 text-[#1e3a8a] hover:text-[#2563eb] underline transition-colors">{company.url}</td>
               <td className="p-2 md:p-4" onClick={(e) => e.stopPropagation()}>
                 {company.chatbots?.length > 0 ? (
                   <UploadContextModal chatbotId={company.chatbots[0]._id} />

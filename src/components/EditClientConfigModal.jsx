@@ -128,7 +128,7 @@ const EditClientConfigModal = ({ chatbot, onClose }) => {
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+            className="px-4 py-2 bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-lg shadow-md transition-colors"
           >
             Save Changes
           </button>

@@ -1,26 +1,132 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // Import the useAuth hook
-import { adminLogin } from "../services/api";
+import { adminLogin, userLogin } from "../services/api";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const LoginPage = () => {
+  console.log("📄 [LOGIN] LoginPage component rendered");
   const { login } = useAuth(); // Use the login function from the context
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Log when component mounts
+  useEffect(() => {
+    console.log("📄 [LOGIN] LoginPage component mounted");
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    console.log("🚀 [LOGIN] handleLogin called with email:", email);
+    console.log("🚀 [LOGIN] Form submitted, starting login process...");
     setLoading(true);
 
-    try {
-      const res = await adminLogin({
-        email,
-        password,
+    // Helper function to check if error is deactivation
+    const isDeactivationError = (error) => {
+      // Check multiple possible locations for error message
+      const errorMsg = error?.response?.data?.message || 
+                      error?.response?.data?.error ||
+                      error?.message || 
+                      error?.response?.message ||
+                      "";
+      
+      console.log("🔍 [LOGIN] Checking error:", {
+        status: error?.response?.status,
+        message: errorMsg,
+        fullError: error?.response?.data
       });
+      
+      const isDeactivated = errorMsg.toLowerCase().includes("deactivated") || 
+                            errorMsg.toLowerCase().includes("inactive") || 
+                            errorMsg.toLowerCase().includes("all chatbots are currently inactive") ||
+                            errorMsg.toLowerCase().includes("currently inactive");
+      
+      if (isDeactivated) {
+        console.log("🔴 [LOGIN] Deactivation error detected:", errorMsg);
+      }
+      
+      return isDeactivated;
+    };
+
+    try {
+      // Try admin login first
+      let res;
+      try {
+        console.log("🔵 [LOGIN] Attempting admin login...");
+        res = await adminLogin({
+          email,
+          password,
+        });
+        console.log("✅ [LOGIN] Admin login successful:", res.data);
+      } catch (adminErr) {
+        console.log("⚠️ [LOGIN] Admin login failed:", {
+          status: adminErr.response?.status,
+          message: adminErr.response?.data?.message,
+          data: adminErr.response?.data
+        });
+        
+        // Check for deactivation error immediately
+        if (isDeactivationError(adminErr)) {
+          console.log("🔴 [LOGIN] Deactivation detected! Redirecting to deactivated page (admin error)");
+          setLoading(false);
+          // Clear any partial auth data
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          localStorage.removeItem("role");
+          // Use window.location.replace for immediate redirect (prevents back button)
+          console.log("🔴 [LOGIN] Executing redirect: window.location.replace('/account-deactivated')");
+          window.location.replace("/account-deactivated");
+          return;
+        }
+        
+        // If admin login fails with 401, try user login
+        if (adminErr.response?.status === 401) {
+          console.log("🔵 [LOGIN] Admin login returned 401, trying user login...");
+          // Try user login
+          try {
+            res = await userLogin({
+              email,
+              password,
+            });
+            console.log("✅ [LOGIN] User login successful:", res.data);
+          } catch (userErr) {
+            console.log("⚠️ [LOGIN] User login error caught:", {
+              status: userErr.response?.status,
+              message: userErr.response?.data?.message,
+              data: userErr.response?.data,
+              fullError: userErr
+            });
+            
+            // Check for deactivation error immediately
+            if (isDeactivationError(userErr)) {
+              console.log("🔴 [LOGIN] Deactivation detected! Redirecting to deactivated page (user error)");
+              console.log("🔴 [LOGIN] Error details:", userErr.response?.data);
+              setLoading(false);
+              // Clear any partial auth data
+              localStorage.removeItem("token");
+              localStorage.removeItem("user");
+              localStorage.removeItem("role");
+              // Use window.location for immediate redirect (no React navigation delay)
+              console.log("🔴 [LOGIN] Executing redirect: window.location.replace('/account-deactivated')");
+              // Force redirect immediately - use replace to prevent back button
+              window.location.replace("/account-deactivated");
+              // Don't continue execution
+              return;
+            }
+            
+            // Re-throw user error if not deactivation
+            throw userErr;
+          }
+        } else {
+          // Re-throw admin error if not 401
+          throw adminErr;
+        }
+      }
 
       // The login function from the context now handles everything:
       // setting state, localStorage, and navigating.
@@ -28,9 +134,24 @@ const LoginPage = () => {
 
       toast.success("Login successful 🎉");
     } catch (err) {
-      console.error(err);
-      const errorMsg =
-        err.response?.data?.message || "Login failed. Please try again.";
+      console.error("Login error:", err);
+      
+      // Final check for deactivation error
+      if (isDeactivationError(err)) {
+        console.log("🔴 [LOGIN] Deactivation detected! Redirecting to deactivated page (final catch)");
+        console.log("🔴 [LOGIN] Error details:", err.response?.data);
+        setLoading(false);
+        // Clear any partial auth data
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        localStorage.removeItem("role");
+        // Use window.location.replace for immediate redirect (prevents back button)
+        console.log("🔴 [LOGIN] Executing redirect: window.location.replace('/account-deactivated')");
+        window.location.replace("/account-deactivated");
+        return;
+      }
+      
+      const errorMsg = err.response?.data?.message || err.message || "Login failed. Please try again.";
       toast.error(errorMsg);
     } finally {
       setLoading(false);
