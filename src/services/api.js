@@ -458,6 +458,40 @@ export const sendProposal = (chatbotId, phone, serviceName) => {
   });
 };
 
+// Zoho CRM Integration API endpoints
+export const getZohoConfigAdmin = (chatbotId) => {
+  return api.get(`/zoho/${chatbotId}/admin`);
+};
+
+export const updateZohoConfig = (chatbotId, config) => {
+  return api.put(`/zoho/${chatbotId}`, config);
+};
+
+export const testZohoConnection = (chatbotId) => {
+  return api.post(`/zoho/${chatbotId}/test-connection`);
+};
+
+export const getZohoAuthorizationUrl = (chatbotId, region, clientId) => {
+  const params = {};
+  if (region) {
+    params.region = region;
+  }
+  if (clientId && clientId.trim()) {
+    params.clientId = clientId.trim();
+  }
+  console.log('🔍 [Zoho Auth] Request params:', { chatbotId, region, clientId: clientId ? '***' + clientId.slice(-10) : 'none', params });
+  return api.get(`/zoho/${chatbotId}/authorization-url`, {
+    params
+  });
+};
+
+export const exchangeZohoCodeForToken = (chatbotId, code, region) => {
+  return api.post(`/zoho/${chatbotId}/exchange-code`, {
+    code,
+    region
+  });
+};
+
 // Transcript Config API endpoints
 export const getTranscriptConfig = (chatbotId) => {
   return api.get(`/transcript/${chatbotId}`);

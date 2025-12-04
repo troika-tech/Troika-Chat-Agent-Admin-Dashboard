@@ -36,8 +36,13 @@ import {
   updateIntentConfig,
   getTranscriptConfigAdmin,
   updateTranscriptConfig,
+  getZohoConfigAdmin,
+  updateZohoConfig,
+  testZohoConnection,
+  getZohoAuthorizationUrl,
+  exchangeZohoCodeForToken,
 } from "../services/api";
-import { Image, Type, Loader2, MessageSquare, Phone, Settings, Calendar, Mail, Plus, Edit2, Trash2, X, Share2, Sparkles, Heading, Navigation, Monitor, ArrowLeft, Eye, EyeOff, Search, Shield, FileText } from "lucide-react";
+import { Image, Type, Loader2, MessageSquare, Phone, Settings, Calendar, Mail, Plus, Edit2, Trash2, X, Share2, Sparkles, Heading, Navigation, Monitor, ArrowLeft, Eye, EyeOff, Search, Shield, FileText, Database, CheckCircle2 } from "lucide-react";
 import AISensyConfigFields from "../components/auth/AISensyConfigFields";
 import TwilioConfigFields from "../components/auth/TwilioConfigFields";
 import MessageBirdConfigFields from "../components/auth/MessageBirdConfigFields";
@@ -177,6 +182,44 @@ const ManageChatbotUIPage = () => {
     pdf_filename: "Chat-Summary.pdf",
   });
   const [transcriptConfigLoading, setTranscriptConfigLoading] = useState(false);
+
+  // Zoho CRM Integration state
+  const [zohoConfig, setZohoConfig] = useState({
+    enabled: false,
+    capture_intent_keywords: [],
+    required_fields: ['name', 'phone', 'email'],
+    optional_fields: ['company'],
+    name_prompt_text: "Great! What's your name?",
+    phone_prompt_text: "What's your phone number?",
+    email_prompt_text: "What's your email address?",
+    company_prompt_text: "Which company are you from? (optional)",
+    success_message: "✅ Thank you! We've saved your details. Our team will reach out soon!",
+    zoho_region: 'com',
+    zoho_module: 'Leads',
+    zoho_client_id: '',
+    zoho_client_secret: '',
+    zoho_refresh_token: '',
+    field_mapping: {
+      name_field: 'First_Name',
+      phone_field: 'Phone',
+      email_field: 'Email',
+      company_field: 'Company',
+      source_field: 'Lead_Source',
+      description_field: 'Description',
+    },
+  });
+  const [zohoConfigLoading, setZohoConfigLoading] = useState(false);
+  const [updatingZoho, setUpdatingZoho] = useState(false);
+  const [testingZohoConnection, setTestingZohoConnection] = useState(false);
+  const [generatingRefreshToken, setGeneratingRefreshToken] = useState(false);
+  const [newZohoKeyword, setNewZohoKeyword] = useState('');
+  const [manualAuthCode, setManualAuthCode] = useState('');
+  const [exchangingManualCode, setExchangingManualCode] = useState(false);
+  const [showZohoPassword, setShowZohoPassword] = useState({
+    client_id: false,
+    client_secret: false,
+    refresh_token: false,
+  });
   const [updatingTranscript, setUpdatingTranscript] = useState(false);
   const [updatingEmail, setUpdatingEmail] = useState(false);
   const [updatingSocial, setUpdatingSocial] = useState(false);
@@ -292,6 +335,9 @@ const ManageChatbotUIPage = () => {
     }
     if (activeSection === "transcript" && selectedChatbotId) {
       fetchTranscriptConfig(selectedChatbotId);
+    }
+    if (activeSection === "zoho" && selectedChatbotId) {
+      fetchZohoConfig(selectedChatbotId);
     }
   }, [activeSection, selectedChatbotId]);
 
@@ -763,6 +809,380 @@ const ManageChatbotUIPage = () => {
     } finally {
       setUpdatingIntent(false);
     }
+  };
+
+  const fetchZohoConfig = async (chatbotId) => {
+    if (!chatbotId) return;
+    
+    setZohoConfigLoading(true);
+    try {
+      const response = await getZohoConfigAdmin(chatbotId);
+      const config = response.data.data || response.data;
+      console.log('[Zoho Config] Fetched config:', config);
+      setZohoConfig({
+        enabled: Boolean(config.enabled),
+        capture_intent_keywords: config.capture_intent_keywords || [],
+        required_fields: config.required_fields || ['name', 'phone', 'email'],
+        optional_fields: config.optional_fields || ['company'],
+        name_prompt_text: config.name_prompt_text || "Great! What's your name?",
+        phone_prompt_text: config.phone_prompt_text || "What's your phone number?",
+        email_prompt_text: config.email_prompt_text || "What's your email address?",
+        company_prompt_text: config.company_prompt_text || "Which company are you from? (optional)",
+        success_message: config.success_message || "✅ Thank you! We've saved your details. Our team will reach out soon!",
+        zoho_region: config.zoho_region || 'com',
+        zoho_module: config.zoho_module || 'Leads',
+        zoho_client_id: config.zoho_client_id || '',
+        zoho_client_secret: config.zoho_client_secret || '',
+        zoho_refresh_token: config.zoho_refresh_token || '',
+        field_mapping: config.field_mapping || {
+          name_field: 'First_Name',
+          phone_field: 'Phone',
+          email_field: 'Email',
+          company_field: 'Company',
+          source_field: 'Lead_Source',
+          description_field: 'Description',
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching Zoho config:", error);
+      // Set defaults on error
+      setZohoConfig({
+        enabled: false,
+        capture_intent_keywords: [],
+        required_fields: ['name', 'phone', 'email'],
+        optional_fields: ['company'],
+        name_prompt_text: "Great! What's your name?",
+        phone_prompt_text: "What's your phone number?",
+        email_prompt_text: "What's your email address?",
+        company_prompt_text: "Which company are you from? (optional)",
+        success_message: "✅ Thank you! We've saved your details. Our team will reach out soon!",
+        zoho_region: 'com',
+        zoho_module: 'Leads',
+        zoho_client_id: '',
+        zoho_client_secret: '',
+        zoho_refresh_token: '',
+        field_mapping: {
+          name_field: 'First_Name',
+          phone_field: 'Phone',
+          email_field: 'Email',
+          company_field: 'Company',
+          source_field: 'Lead_Source',
+          description_field: 'Description',
+        },
+      });
+    } finally {
+      setZohoConfigLoading(false);
+    }
+  };
+
+  const handleUpdateZohoConfig = async () => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    setUpdatingZoho(true);
+    try {
+      await updateZohoConfig(selectedChatbotId, zohoConfig);
+      toast.success("Zoho configuration updated successfully!");
+    } catch (error) {
+      console.error("Error updating Zoho config:", error);
+      toast.error(error.response?.data?.message || "Failed to update Zoho configuration");
+    } finally {
+      setUpdatingZoho(false);
+    }
+  };
+
+  // Handle OAuth callback from popup
+  useEffect(() => {
+    const handleMessage = async (event) => {
+      // Log all messages for debugging
+      console.log('🔍 [Zoho OAuth] Message received:', {
+        type: event.data?.type,
+        origin: event.origin,
+        data: event.data
+      });
+      
+      // Accept messages from any origin in development (for popup callback)
+      // In production, you should verify the origin
+      if (event.data?.type === 'zoho-oauth-callback') {
+        const { code, region } = event.data;
+        console.log('✅ [Zoho OAuth] Received authorization code, exchanging for token...');
+        console.log('✅ [Zoho OAuth] Code:', code.substring(0, 20) + '...');
+        console.log('✅ [Zoho OAuth] Region:', region);
+        console.log('✅ [Zoho OAuth] Chatbot ID:', selectedChatbotId);
+        
+        setGeneratingRefreshToken(true);
+        
+        try {
+          // Exchange code for refresh token
+          console.log('🔄 [Zoho OAuth] Calling exchange endpoint...');
+          const response = await exchangeZohoCodeForToken(
+            selectedChatbotId,
+            code,
+            region || zohoConfig.zoho_region || 'in'
+          );
+          
+          console.log('✅ [Zoho OAuth] Token exchange response:', response.data);
+          
+          if (response.data?.data?.refreshToken) {
+            // Auto-fill refresh token
+            setZohoConfig(prev => ({
+              ...prev,
+              zoho_refresh_token: response.data.data.refreshToken
+            }));
+            toast.success('✅ Refresh token generated successfully!');
+          } else {
+            throw new Error('No refresh token in response');
+          }
+        } catch (error) {
+          console.error('❌ [Zoho OAuth] Error exchanging code for token:', error);
+          console.error('❌ [Zoho OAuth] Error details:', {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status
+          });
+          const errorMessage = error.response?.data?.message || error.message || 'Failed to generate refresh token';
+          toast.error(errorMessage);
+        } finally {
+          setGeneratingRefreshToken(false);
+        }
+      } else if (event.data?.type === 'zoho-oauth-error') {
+        console.error('❌ [Zoho OAuth] Error from callback:', event.data.error);
+        setGeneratingRefreshToken(false);
+        toast.error(event.data.error || 'Authorization failed');
+      } else if (event.data?.type === 'zoho-refresh-token') {
+        // Handle refresh token received from manual exchange
+        console.log('✅ [Zoho OAuth] Received refresh token from manual exchange');
+        if (event.data.refreshToken) {
+          setZohoConfig(prev => ({
+            ...prev,
+            zoho_refresh_token: event.data.refreshToken
+          }));
+          toast.success('✅ Refresh token received! Please click "Update Zoho Configuration" to save it.');
+          setGeneratingRefreshToken(false);
+        }
+      }
+    };
+    
+    console.log('✅ [Zoho OAuth] Message listener registered');
+    window.addEventListener('message', handleMessage);
+    
+    return () => {
+      console.log('🔄 [Zoho OAuth] Message listener removed');
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [selectedChatbotId, zohoConfig.zoho_region]);
+
+  const handleGenerateRefreshToken = async () => {
+    if (!selectedChatbotId) {
+      toast.error('Please select a chatbot first');
+      return;
+    }
+    
+    // Get the raw Client ID from the form (before encryption)
+    const rawClientId = zohoConfig.zoho_client_id?.trim();
+    const rawClientSecret = zohoConfig.zoho_client_secret?.trim();
+    
+    if (!rawClientId || !rawClientSecret) {
+      toast.error('Please enter Client ID and Client Secret first');
+      return;
+    }
+    
+    // Save config first to ensure Client ID and Secret are stored
+    try {
+      await updateZohoConfig(selectedChatbotId, zohoConfig);
+    } catch (error) {
+      console.error('Error saving config before generating token:', error);
+      toast.error('Failed to save configuration. Please check your inputs.');
+      return;
+    }
+    
+    setGeneratingRefreshToken(true);
+    
+    try {
+      console.log('🔍 [Zoho Auth] Generating token for chatbot:', selectedChatbotId);
+      console.log('🔍 [Zoho Auth] Client ID (first 10 chars):', rawClientId?.substring(0, 10));
+      console.log('🔍 [Zoho Auth] Region:', zohoConfig.zoho_region || 'in');
+      
+      // Get authorization URL - pass raw clientId as query param
+      // Use the raw value from form, not the encrypted one from saved config
+      const response = await getZohoAuthorizationUrl(
+        selectedChatbotId,
+        zohoConfig.zoho_region || 'in',
+        rawClientId // Pass raw client ID from form
+      );
+      
+      if (response.data?.data?.authorizationUrl) {
+        // Open popup window for OAuth
+        const width = 600;
+        const height = 700;
+        const left = (window.screen.width - width) / 2;
+        const top = (window.screen.height - height) / 2;
+        
+        const popup = window.open(
+          response.data.data.authorizationUrl,
+          'Zoho OAuth',
+          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+        );
+        
+        // Check if popup was blocked
+        if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+          toast.error('Popup blocked. Please allow popups for this site and try again.');
+          setGeneratingRefreshToken(false);
+          return;
+        }
+        
+        // Track if OAuth completed successfully
+        let oauthCompleted = false;
+        
+        // Track completion via message handler
+        const completionTracker = (event) => {
+          if (event.data?.type === 'zoho-oauth-callback' || event.data?.type === 'zoho-oauth-error') {
+            oauthCompleted = true;
+          }
+        };
+        window.addEventListener('message', completionTracker);
+        
+        // Monitor popup (will be closed by callback page)
+        const checkPopup = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkPopup);
+            window.removeEventListener('message', completionTracker);
+            
+            // Reset loading state if popup was closed without completing OAuth
+            // Use a delay to allow message handler to process first (in case message is still pending)
+            setTimeout(() => {
+              setGeneratingRefreshToken(prev => {
+                // Only reset if still in generating state (message handler might have already reset it)
+                if (prev && !oauthCompleted) {
+                  console.log('🔄 [Zoho OAuth] Popup closed without completing OAuth, resetting generating state');
+                  toast.info('OAuth popup was closed. If you completed authorization, the token should appear shortly.');
+                }
+                return false;
+              });
+            }, 2000); // Delay to allow message handler to process
+          }
+        }, 500);
+        
+        // Timeout after 5 minutes
+        const timeoutId = setTimeout(() => {
+          if (!popup.closed) {
+            popup.close();
+            window.removeEventListener('message', completionTracker);
+            setGeneratingRefreshToken(false);
+            toast.error('Authorization timeout. Please try again.');
+          }
+          clearInterval(checkPopup);
+        }, 5 * 60 * 1000);
+      } else {
+        throw new Error('Failed to get authorization URL');
+      }
+    } catch (error) {
+      console.error('Error generating refresh token:', error);
+      toast.error(error.response?.data?.message || 'Failed to start authorization flow');
+      setGeneratingRefreshToken(false);
+    }
+  };
+
+  const handleManualCodeExchange = async () => {
+    if (!selectedChatbotId) {
+      toast.error('Please select a chatbot first');
+      return;
+    }
+    
+    if (!manualAuthCode.trim()) {
+      toast.error('Please enter the authorization code');
+      return;
+    }
+    
+    setExchangingManualCode(true);
+    try {
+      const response = await exchangeZohoCodeForToken(
+        selectedChatbotId,
+        manualAuthCode.trim(),
+        zohoConfig.zoho_region || 'in'
+      );
+      
+      if (response.data?.data?.refreshToken) {
+        setZohoConfig(prev => ({
+          ...prev,
+          zoho_refresh_token: response.data.data.refreshToken
+        }));
+        setManualAuthCode('');
+        toast.success('✅ Refresh token generated successfully! Please click "Update Zoho Configuration" to save it.');
+      } else {
+        throw new Error('No refresh token in response');
+      }
+    } catch (error) {
+      console.error('Error exchanging manual code:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to exchange code';
+      toast.error(errorMessage);
+    } finally {
+      setExchangingManualCode(false);
+    }
+  };
+
+  const handleTestZohoConnection = async () => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    // Validate that credentials are entered
+    if (!zohoConfig.zoho_client_id || !zohoConfig.zoho_client_secret || !zohoConfig.zoho_refresh_token) {
+      toast.error("Please enter Client ID, Client Secret, and Refresh Token before testing connection");
+      return;
+    }
+
+    // Validate refresh token length (Zoho refresh tokens are typically 100+ characters)
+    const refreshTokenLength = zohoConfig.zoho_refresh_token?.trim().length || 0;
+    if (refreshTokenLength < 50) {
+      toast.error("Refresh token appears to be invalid or truncated. Please generate a new refresh token using the 'Generate Refresh Token' button.");
+      return;
+    }
+
+    // Save configuration first if it hasn't been saved yet
+    try {
+      await updateZohoConfig(selectedChatbotId, zohoConfig);
+    } catch (error) {
+      console.error("Error saving Zoho config before test:", error);
+      toast.error("Failed to save configuration. Please check your inputs.");
+      return;
+    }
+
+    setTestingZohoConnection(true);
+    try {
+      await testZohoConnection(selectedChatbotId);
+      toast.success("Connection test successful! ✅");
+    } catch (error) {
+      console.error("Error testing Zoho connection:", error);
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message || 
+                          "Connection test failed";
+      toast.error(errorMessage, { autoClose: 5000 });
+      console.error("Full error response:", error.response?.data);
+    } finally {
+      setTestingZohoConnection(false);
+    }
+  };
+
+  const handleAddZohoKeyword = () => {
+    if (newZohoKeyword.trim() && !zohoConfig.capture_intent_keywords.includes(newZohoKeyword.trim())) {
+      setZohoConfig({
+        ...zohoConfig,
+        capture_intent_keywords: [...zohoConfig.capture_intent_keywords, newZohoKeyword.trim()],
+      });
+      setNewZohoKeyword('');
+    }
+  };
+
+  const handleRemoveZohoKeyword = (keyword) => {
+    setZohoConfig({
+      ...zohoConfig,
+      capture_intent_keywords: zohoConfig.capture_intent_keywords.filter(k => k !== keyword),
+    });
   };
 
   const fetchTranscriptConfig = async (chatbotId) => {
@@ -1572,6 +1992,17 @@ const ManageChatbotUIPage = () => {
                   >
                     <FileText className="h-4 w-4 mr-2" />
                     Transcript
+                </button>
+                <button
+                    onClick={() => setActiveSection("zoho")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "zoho"
+                        ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-purple-500"
+                    }`}
+                  >
+                    <Database className="h-4 w-4 mr-2" />
+                    Zoho CRM
                 </button>
                 <button
                     onClick={() => setActiveSection("social")}
@@ -2544,6 +2975,434 @@ const ManageChatbotUIPage = () => {
                 </div>
               )}
 
+              {/* Zoho CRM Integration Configuration Section */}
+              {activeSection === "zoho" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <Database className="h-6 w-6 text-purple-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">Zoho CRM Integration</h2>
+                  </div>
+
+                  {zohoConfigLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+                      <span className="ml-2 text-gray-600">Loading Zoho configuration...</span>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Enable Zoho Integration Toggle */}
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <label className="text-lg font-semibold text-gray-800">Enable Zoho Lead Capture</label>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Automatically capture leads to Zoho CRM when users show interest
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setZohoConfig({ ...zohoConfig, enabled: !zohoConfig.enabled })}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              zohoConfig.enabled ? "bg-purple-600" : "bg-gray-300"
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                zohoConfig.enabled ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+
+                      {zohoConfig.enabled && (
+                        <div className="space-y-6">
+                          {/* Zoho Credentials */}
+                          <div className="border-t pt-6">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-4">Zoho CRM Credentials</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Zoho Region
+                                </label>
+                                <select
+                                  value={zohoConfig.zoho_region}
+                                  onChange={(e) => setZohoConfig({ ...zohoConfig, zoho_region: e.target.value })}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                >
+                                  <option value="com">United States (com)</option>
+                                  <option value="eu">Europe (eu)</option>
+                                  <option value="in">India (in)</option>
+                                  <option value="au">Australia (au)</option>
+                                  <option value="jp">Japan (jp)</option>
+                                  <option value="ca">Canada (ca)</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Zoho Module
+                                </label>
+                                <select
+                                  value={zohoConfig.zoho_module}
+                                  onChange={(e) => setZohoConfig({ ...zohoConfig, zoho_module: e.target.value })}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                >
+                                  <option value="Leads">Leads</option>
+                                  <option value="Contacts">Contacts</option>
+                                  <option value="Deals">Deals</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Client ID
+                                </label>
+                                <div className="relative">
+                                  <input
+                                    type={showZohoPassword.client_id ? "text" : "password"}
+                                    value={zohoConfig.zoho_client_id}
+                                    onChange={(e) => setZohoConfig({ ...zohoConfig, zoho_client_id: e.target.value })}
+                                    placeholder="Enter Zoho Client ID"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-10"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowZohoPassword({ ...showZohoPassword, client_id: !showZohoPassword.client_id })}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                  >
+                                    {showZohoPassword.client_id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                  </button>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Client Secret
+                                </label>
+                                <div className="relative">
+                                  <input
+                                    type={showZohoPassword.client_secret ? "text" : "password"}
+                                    value={zohoConfig.zoho_client_secret}
+                                    onChange={(e) => setZohoConfig({ ...zohoConfig, zoho_client_secret: e.target.value })}
+                                    placeholder="Enter Zoho Client Secret"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-10"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowZohoPassword({ ...showZohoPassword, client_secret: !showZohoPassword.client_secret })}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                  >
+                                    {showZohoPassword.client_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Refresh Token
+                                </label>
+                                <div className="relative">
+                                  <input
+                                    type={showZohoPassword.refresh_token ? "text" : "password"}
+                                    value={zohoConfig.zoho_refresh_token}
+                                    onChange={(e) => setZohoConfig({ ...zohoConfig, zoho_refresh_token: e.target.value })}
+                                    placeholder="Enter Zoho Refresh Token"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 pr-10"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowZohoPassword({ ...showZohoPassword, refresh_token: !showZohoPassword.refresh_token })}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                  >
+                                    {showZohoPassword.refresh_token ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                  </button>
+                                </div>
+                                <div className="mt-2 flex items-center gap-2">
+                                  <button
+                                    onClick={handleGenerateRefreshToken}
+                                    disabled={generatingRefreshToken || !zohoConfig.zoho_client_id || !zohoConfig.zoho_client_secret}
+                                    className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                                  >
+                                    {generatingRefreshToken ? (
+                                      <>
+                                        <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                                        Generating...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Sparkles className="h-3 w-3 mr-1.5" />
+                                        Generate Refresh Token
+                                      </>
+                                    )}
+                                  </button>
+                                  <p className="text-xs text-gray-500">
+                                    or get from 
+                                    <a 
+                                      href="https://api-console.zoho.com/" 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-purple-600 hover:text-purple-800 underline ml-1"
+                                    >
+                                      Zoho Developer Console
+                                    </a>
+                                  </p>
+                                </div>
+                                {/* Manual Code Exchange */}
+                                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                  <p className="text-xs text-gray-600 mb-2">
+                                    <strong>Manual Exchange:</strong> If the automatic flow didn't work, copy the authorization code from the callback page and paste it here:
+                                  </p>
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="text"
+                                      value={manualAuthCode}
+                                      onChange={(e) => setManualAuthCode(e.target.value)}
+                                      placeholder="Paste authorization code here..."
+                                      className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <button
+                                      onClick={handleManualCodeExchange}
+                                      disabled={exchangingManualCode || !manualAuthCode.trim()}
+                                      className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                                    >
+                                      {exchangingManualCode ? (
+                                        <>
+                                          <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                                          Exchanging...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Sparkles className="h-3 w-3 mr-1.5" />
+                                          Exchange Code
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="mt-4">
+                              <button
+                                onClick={handleTestZohoConnection}
+                                disabled={testingZohoConnection}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                              >
+                                {testingZohoConnection ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Testing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                                    Test Connection
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Intent Keywords */}
+                          <div className="border-t pt-6">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-4">Lead Capture Settings</h3>
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Intent Keywords <span className="text-red-500">*</span>
+                              </label>
+                              <p className="text-xs text-gray-500 mb-3">
+                                Add keywords that trigger lead capture (e.g., "interested", "want to buy", "get quote")
+                              </p>
+                              <div className="flex gap-2 mb-3">
+                                <input
+                                  type="text"
+                                  value={newZohoKeyword}
+                                  onChange={(e) => setNewZohoKeyword(e.target.value)}
+                                  onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleAddZohoKeyword();
+                                    }
+                                  }}
+                                  placeholder="Enter keyword (e.g., interested)"
+                                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                                <button
+                                  onClick={handleAddZohoKeyword}
+                                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </button>
+                              </div>
+                              {zohoConfig.capture_intent_keywords.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                  {zohoConfig.capture_intent_keywords.map((keyword, index) => (
+                                    <span
+                                      key={index}
+                                      className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm"
+                                    >
+                                      {keyword}
+                                      <button
+                                        onClick={() => handleRemoveZohoKeyword(keyword)}
+                                        className="ml-2 text-purple-600 hover:text-purple-800"
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-gray-500 italic">No keywords added yet</p>
+                              )}
+                            </div>
+
+                            {/* Required Fields */}
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Required Fields
+                              </label>
+                              <div className="flex flex-wrap gap-3">
+                                {['name', 'phone', 'email', 'company'].map((field) => (
+                                  <label key={field} className="flex items-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={zohoConfig.required_fields.includes(field)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setZohoConfig({
+                                            ...zohoConfig,
+                                            required_fields: [...zohoConfig.required_fields, field],
+                                            optional_fields: zohoConfig.optional_fields.filter(f => f !== field),
+                                          });
+                                        } else {
+                                          setZohoConfig({
+                                            ...zohoConfig,
+                                            required_fields: zohoConfig.required_fields.filter(f => f !== field),
+                                          });
+                                        }
+                                      }}
+                                      className="mr-2"
+                                    />
+                                    <span className="text-sm text-gray-700 capitalize">{field}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Optional Fields */}
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Optional Fields
+                              </label>
+                              <div className="flex flex-wrap gap-3">
+                                {['name', 'phone', 'email', 'company', 'message'].map((field) => (
+                                  <label key={field} className="flex items-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={zohoConfig.optional_fields.includes(field)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setZohoConfig({
+                                            ...zohoConfig,
+                                            optional_fields: [...zohoConfig.optional_fields, field],
+                                            required_fields: zohoConfig.required_fields.filter(f => f !== field),
+                                          });
+                                        } else {
+                                          setZohoConfig({
+                                            ...zohoConfig,
+                                            optional_fields: zohoConfig.optional_fields.filter(f => f !== field),
+                                          });
+                                        }
+                                      }}
+                                      className="mr-2"
+                                    />
+                                    <span className="text-sm text-gray-700 capitalize">{field}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Field Prompts */}
+                          <div className="border-t pt-6">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-4">Field Prompts</h3>
+                            <div className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Name Prompt
+                                </label>
+                                <input
+                                  type="text"
+                                  value={zohoConfig.name_prompt_text}
+                                  onChange={(e) => setZohoConfig({ ...zohoConfig, name_prompt_text: e.target.value })}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Phone Prompt
+                                </label>
+                                <input
+                                  type="text"
+                                  value={zohoConfig.phone_prompt_text}
+                                  onChange={(e) => setZohoConfig({ ...zohoConfig, phone_prompt_text: e.target.value })}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Email Prompt
+                                </label>
+                                <input
+                                  type="text"
+                                  value={zohoConfig.email_prompt_text}
+                                  onChange={(e) => setZohoConfig({ ...zohoConfig, email_prompt_text: e.target.value })}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Company Prompt
+                                </label>
+                                <input
+                                  type="text"
+                                  value={zohoConfig.company_prompt_text}
+                                  onChange={(e) => setZohoConfig({ ...zohoConfig, company_prompt_text: e.target.value })}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Success Message
+                                </label>
+                                <textarea
+                                  value={zohoConfig.success_message}
+                                  onChange={(e) => setZohoConfig({ ...zohoConfig, success_message: e.target.value })}
+                                  rows={2}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Save Button */}
+                          <div className="flex justify-end pt-4 border-t">
+                            <button
+                              onClick={handleUpdateZohoConfig}
+                              disabled={updatingZoho}
+                              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                            >
+                              {updatingZoho ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Updating...
+                                </>
+                              ) : (
+                                "Update Zoho Configuration"
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* Authentication Configuration Section */}
               {/* Intent & Proposals Configuration Section */}
               {activeSection === "intent" && (
@@ -3064,43 +3923,44 @@ const ManageChatbotUIPage = () => {
                         </div>
                       </div>
 
-                      {/* Save Button */}
-                      <div className="flex justify-end">
-                        <button
-                          onClick={async () => {
-                            if (!selectedChatbotId) {
-                              toast.error("Please select a chatbot first");
-                              return;
-                            }
-                            try {
-                              setUpdatingAuth(true);
-                              await updateAuthConfig(selectedChatbotId, authConfig);
-                              toast.success("Authentication configuration updated successfully! ✅");
-                            } catch (error) {
-                              console.error("Error updating auth config:", error);
-                              toast.error(error.response?.data?.message || "Failed to update authentication configuration");
-                            } finally {
-                              setUpdatingAuth(false);
-                            }
-                          }}
-                          disabled={updatingAuth}
-                          className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                        >
-                          {updatingAuth ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Updating...
-                            </>
-                          ) : (
-                            <>
-                              <Shield className="h-4 w-4" />
-                              Update Authentication Settings
-                            </>
-                          )}
-                        </button>
-                      </div>
                     </>
                   )}
+
+                  {/* Save Button - Always visible */}
+                  <div className="flex justify-end mt-6 border-t pt-6">
+                    <button
+                      onClick={async () => {
+                        if (!selectedChatbotId) {
+                          toast.error("Please select a chatbot first");
+                          return;
+                        }
+                        try {
+                          setUpdatingAuth(true);
+                          await updateAuthConfig(selectedChatbotId, authConfig);
+                          toast.success("Authentication configuration updated successfully! ✅");
+                        } catch (error) {
+                          console.error("Error updating auth config:", error);
+                          toast.error(error.response?.data?.message || "Failed to update authentication configuration");
+                        } finally {
+                          setUpdatingAuth(false);
+                        }
+                      }}
+                      disabled={updatingAuth}
+                      className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {updatingAuth ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <Shield className="h-4 w-4" />
+                          Update Authentication Settings
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
 
