@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 import {
   fetchChatbots,
   getChatbotUIConfig,
@@ -8,6 +10,12 @@ import {
   updateChatbotUIWelcomeText,
   updateChatbotUIAssistantHeader,
   updateChatbotUITabConfig,
+  updateChatbotUIInputPlaceholders,
+  getWhatsAppProposalTemplates,
+  createWhatsAppProposalTemplate,
+  updateWhatsAppProposalTemplate,
+  deleteWhatsAppProposalTemplate,
+  updateWhatsAppProposalSettings,
   getChatbotSidebarConfig,
   updateChatbotSidebarEnabled,
   updateChatbotSidebarWhatsApp,
@@ -228,6 +236,40 @@ const ManageChatbotUIPage = () => {
   const [tabTitle, setTabTitle] = useState("");
   const [faviconUrl, setFaviconUrl] = useState("");
   const [updatingTab, setUpdatingTab] = useState(false);
+  
+  // Input placeholder configuration state
+  const [inputPlaceholdersEnabled, setInputPlaceholdersEnabled] = useState(false);
+  const [inputPlaceholders, setInputPlaceholders] = useState(["Ask me anything...", "How can I help you?", "What would you like to know?"]);
+  const [inputPlaceholderSpeed, setInputPlaceholderSpeed] = useState(2.5);
+  const [inputPlaceholderAnimation, setInputPlaceholderAnimation] = useState("fade");
+  const [updatingPlaceholders, setUpdatingPlaceholders] = useState(false);
+  
+  // WhatsApp Proposal configuration state
+  const [whatsappProposalEnabled, setWhatsappProposalEnabled] = useState(false);
+  const [whatsappProposalText, setWhatsappProposalText] = useState("Send Proposal via WhatsApp");
+  const [whatsappProposalDefaultApiKey, setWhatsappProposalDefaultApiKey] = useState("");
+  const [whatsappProposalDefaultOrgSlug, setWhatsappProposalDefaultOrgSlug] = useState("");
+  const [whatsappProposalDefaultSenderName, setWhatsappProposalDefaultSenderName] = useState("");
+  const [whatsappProposalDefaultCountryCode, setWhatsappProposalDefaultCountryCode] = useState("91");
+  const [whatsappProposalTemplates, setWhatsappProposalTemplates] = useState([]);
+  const [loadingProposalTemplates, setLoadingProposalTemplates] = useState(false);
+  const [showProposalTemplateForm, setShowProposalTemplateForm] = useState(false);
+  const [editingProposalTemplate, setEditingProposalTemplate] = useState(null);
+  const [deletingProposalTemplate, setDeletingProposalTemplate] = useState(null);
+  const [proposalTemplateFormData, setProposalTemplateFormData] = useState({
+    display_name: "",
+    description: "",
+    campaign_name: "",
+    template_name: "",
+    api_key: "",
+    org_slug: "",
+    sender_name: "",
+    country_code: "91",
+    template_params: [],
+    order: 0,
+    is_active: true,
+  });
+  const [updatingProposalSettings, setUpdatingProposalSettings] = useState(false);
 
   // Email Templates state
   const [emailTemplates, setEmailTemplates] = useState([]);
@@ -243,6 +285,7 @@ const ManageChatbotUIPage = () => {
   });
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [deletingTemplate, setDeletingTemplate] = useState(null);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
 
   // Social Media Links state
   const [socialLinks, setSocialLinks] = useState([]);
@@ -297,6 +340,7 @@ const ManageChatbotUIPage = () => {
       fetchUIConfig(selectedChatbotId);
       fetchSidebarConfig(selectedChatbotId);
       fetchAuthConfig(selectedChatbotId);
+      fetchProposalTemplates(selectedChatbotId);
       fetchIntentConfig(selectedChatbotId);
       setActiveSection("avatar"); // Reset to first tab
     } else {
@@ -314,6 +358,9 @@ const ManageChatbotUIPage = () => {
   useEffect(() => {
     if (activeSection === "email" && selectedChatbotId) {
       fetchEmailTemplates(selectedChatbotId);
+    }
+    if (activeSection === "whatsapp-proposal" && selectedChatbotId) {
+      fetchProposalTemplates(selectedChatbotId);
     }
   }, [activeSection, selectedChatbotId]);
 
@@ -712,6 +759,12 @@ const ManageChatbotUIPage = () => {
       setAssistantLogoUrl(config.assistant_logo_url || "");
       setTabTitle(config.tab_title || "");
       setFaviconUrl(config.favicon_url || "");
+      
+      // Load input placeholder configuration
+      setInputPlaceholdersEnabled(config.input_placeholders_enabled || false);
+      setInputPlaceholders(config.input_placeholders || ["Ask me anything...", "How can I help you?", "What would you like to know?"]);
+      setInputPlaceholderSpeed(config.input_placeholder_speed || 2.5);
+      setInputPlaceholderAnimation(config.input_placeholder_animation || "fade");
       
       // Find and set selected chatbot details
       const chatbot = chatbots.find(c => c._id === chatbotId);
@@ -1301,6 +1354,13 @@ const ManageChatbotUIPage = () => {
       setEmailEnabled(config.email_enabled || false);
       setEmailMode(config.email_mode || "premium_modal");
       setEmailText(config.email_text || "Send an Email");
+      setWhatsappProposalEnabled(config.whatsapp_proposal_enabled || false);
+      setWhatsappProposalText(config.whatsapp_proposal_text || "Send Proposal via WhatsApp");
+      setWhatsappProposalDefaultApiKey(config.whatsapp_proposal_default_api_key || "");
+      setWhatsappProposalDefaultOrgSlug(config.whatsapp_proposal_default_org_slug || "");
+      setWhatsappProposalDefaultSenderName(config.whatsapp_proposal_default_sender_name || "");
+      setWhatsappProposalDefaultCountryCode(config.whatsapp_proposal_default_country_code || "91");
+      setWhatsappProposalTemplates(config.whatsapp_proposal_templates || []);
       setSocialEnabled(config.social_enabled || false);
       setBrandingEnabled(config.branding_enabled || false);
       setBrandingText(config.branding_text || "Powered by");
@@ -1330,6 +1390,22 @@ const ManageChatbotUIPage = () => {
       setEmailTemplates([]);
     } finally {
       setLoadingTemplates(false);
+    }
+  };
+
+  const fetchProposalTemplates = async (chatbotId) => {
+    if (!chatbotId) return;
+    try {
+      setLoadingProposalTemplates(true);
+      const response = await getWhatsAppProposalTemplates(chatbotId);
+      const templates = response.data.data || response.data || [];
+      setWhatsappProposalTemplates(templates);
+    } catch (error) {
+      console.error("Error fetching proposal templates:", error);
+      toast.error("Failed to load proposal templates");
+      setWhatsappProposalTemplates([]);
+    } finally {
+      setLoadingProposalTemplates(false);
     }
   };
 
@@ -1376,6 +1452,7 @@ const ManageChatbotUIPage = () => {
       order: emailTemplates.length,
     });
     setShowTemplateForm(true);
+    setShowEmailPreview(false);
   };
 
   const handleEditTemplate = (template) => {
@@ -1388,6 +1465,34 @@ const ManageChatbotUIPage = () => {
       order: template.order || 0,
     });
     setShowTemplateForm(true);
+    setShowEmailPreview(false);
+  };
+
+  // Generate email preview with sample variable replacements
+  const getEmailPreview = () => {
+    let previewSubject = templateFormData.email_subject || "";
+    let previewBody = templateFormData.email_body || "";
+
+    // Replace variables with sample data
+    const sampleVariables = {
+      name: "John Doe",
+      email: "john.doe@example.com",
+      phone: "+1234567890",
+    };
+
+    // Replace variables in subject
+    Object.keys(sampleVariables).forEach(key => {
+      const regex = new RegExp(`\\{${key}\\}`, 'g');
+      previewSubject = previewSubject.replace(regex, sampleVariables[key]);
+    });
+
+    // Replace variables in body (HTML content)
+    Object.keys(sampleVariables).forEach(key => {
+      const regex = new RegExp(`\\{${key}\\}`, 'g');
+      previewBody = previewBody.replace(regex, sampleVariables[key]);
+    });
+
+    return { previewSubject, previewBody };
   };
 
   const handleSaveTemplate = async () => {
@@ -1451,6 +1556,136 @@ const ManageChatbotUIPage = () => {
       toast.error(error.response?.data?.message || "Failed to delete email template");
     } finally {
       setDeletingTemplate(null);
+    }
+  };
+
+  // WhatsApp Proposal Template handlers
+  const handleAddProposalTemplate = () => {
+    setEditingProposalTemplate(null);
+    setProposalTemplateFormData({
+      display_name: "",
+      description: "",
+      campaign_name: "",
+      template_name: "",
+      api_key: "",
+      org_slug: "",
+      sender_name: "",
+      country_code: "91",
+      template_params: [],
+      order: whatsappProposalTemplates.length,
+      is_active: true,
+    });
+    setShowProposalTemplateForm(true);
+  };
+
+  const handleEditProposalTemplate = (template) => {
+    setEditingProposalTemplate(template);
+    setProposalTemplateFormData({
+      display_name: template.display_name || "",
+      description: template.description || "",
+      campaign_name: template.campaign_name || "",
+      template_name: template.template_name || "",
+      api_key: template.api_key || "",
+      org_slug: template.org_slug || "",
+      sender_name: template.sender_name || "",
+      country_code: template.country_code || "91",
+      template_params: template.template_params || [],
+      order: template.order || 0,
+      is_active: template.is_active !== undefined ? template.is_active : true,
+    });
+    setShowProposalTemplateForm(true);
+  };
+
+  const handleSaveProposalTemplate = async () => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    if (!proposalTemplateFormData.display_name.trim()) {
+      toast.error("Display name is required");
+      return;
+    }
+
+    if (!proposalTemplateFormData.campaign_name.trim()) {
+      toast.error("Campaign name is required");
+      return;
+    }
+
+    if (!proposalTemplateFormData.template_name.trim()) {
+      toast.error("Template name is required");
+      return;
+    }
+
+    try {
+      setSavingTemplate(true);
+      if (editingProposalTemplate) {
+        await updateWhatsAppProposalTemplate(selectedChatbotId, editingProposalTemplate._id, proposalTemplateFormData);
+        toast.success("Proposal template updated successfully! ✅");
+      } else {
+        await createWhatsAppProposalTemplate(selectedChatbotId, proposalTemplateFormData);
+        toast.success("Proposal template created successfully! ✅");
+      }
+      setShowProposalTemplateForm(false);
+      setEditingProposalTemplate(null);
+      await fetchProposalTemplates(selectedChatbotId);
+      await fetchSidebarConfig(selectedChatbotId); // Refresh sidebar config to get updated templates
+    } catch (error) {
+      console.error("Error saving proposal template:", error);
+      toast.error(error.response?.data?.message || "Failed to save proposal template");
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const handleDeleteProposalTemplate = async (templateId) => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    if (!window.confirm("Are you sure you want to delete this template?")) {
+      return;
+    }
+
+    try {
+      setDeletingProposalTemplate(templateId);
+      await deleteWhatsAppProposalTemplate(selectedChatbotId, templateId);
+      toast.success("Proposal template deleted successfully! ✅");
+      await fetchProposalTemplates(selectedChatbotId);
+      await fetchSidebarConfig(selectedChatbotId);
+    } catch (error) {
+      console.error("Error deleting proposal template:", error);
+      toast.error(error.response?.data?.message || "Failed to delete proposal template");
+    } finally {
+      setDeletingProposalTemplate(null);
+    }
+  };
+
+  const handleUpdateProposalSettings = async () => {
+    if (!selectedChatbotId) {
+      toast.error("Please select a chatbot first");
+      return;
+    }
+
+    try {
+      setUpdatingProposalSettings(true);
+      await updateWhatsAppProposalSettings(
+        selectedChatbotId,
+        whatsappProposalEnabled,
+        whatsappProposalText,
+        whatsappProposalDefaultApiKey || null,
+        whatsappProposalDefaultOrgSlug || null,
+        whatsappProposalDefaultSenderName || null,
+        whatsappProposalDefaultCountryCode || "91"
+      );
+      toast.success("WhatsApp proposal settings updated successfully! ✅");
+      await fetchSidebarConfig(selectedChatbotId);
+    } catch (error) {
+      console.error("Error updating proposal settings:", error);
+      toast.error(error.response?.data?.message || "Failed to update proposal settings");
+    } finally {
+      setUpdatingProposalSettings(false);
     }
   };
 
@@ -1519,6 +1754,10 @@ const ManageChatbotUIPage = () => {
       'pinterest.com': 'pinterest',
       'tiktok.com': 'tiktok',
       'snapchat.com': 'snapchat',
+      'indiamart.com': 'indiamart',
+      'justdial.com': 'justdial',
+      'tradeindia.com': 'tradeindia',
+      'exportersindia.com': 'exportersindia',
     };
 
     for (const [domain, platform] of Object.entries(platformMap)) {
@@ -1543,6 +1782,10 @@ const ManageChatbotUIPage = () => {
       pinterest: 'Pinterest',
       tiktok: 'TikTok',
       snapchat: 'Snapchat',
+      indiamart: 'IndiaMART',
+      justdial: 'JustDial',
+      tradeindia: 'TradeIndia',
+      exportersindia: 'ExportersIndia',
       custom: 'Custom Link'
     };
     return displayNames[platformValue] || 'Custom Link';
@@ -1917,6 +2160,17 @@ const ManageChatbotUIPage = () => {
                     Tab
                 </button>
                 <button
+                    onClick={() => setActiveSection("placeholders")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "placeholders"
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-emerald-500"
+                    }`}
+                  >
+                    <Type className="h-4 w-4 mr-2" />
+                    Placeholders
+                </button>
+                <button
                     onClick={() => setActiveSection("whatsapp")}
                     className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
                       activeSection === "whatsapp"
@@ -1959,6 +2213,17 @@ const ManageChatbotUIPage = () => {
                   >
                     <Mail className="h-4 w-4 mr-2" />
                     Email
+                </button>
+                <button
+                    onClick={() => setActiveSection("whatsapp-proposal")}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      activeSection === "whatsapp-proposal"
+                        ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-green-500"
+                    }`}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    WhatsApp Proposal
                 </button>
                 <button
                     onClick={() => setActiveSection("authentication")}
@@ -2815,6 +3080,7 @@ const ManageChatbotUIPage = () => {
                                   is_active: true,
                                   order: 0,
                                 });
+                                setShowEmailPreview(false);
                               }}
                               className="text-gray-400 hover:text-gray-600"
                             >
@@ -2862,21 +3128,161 @@ const ManageChatbotUIPage = () => {
                             </div>
 
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Email Body *
-                              </label>
-                              <textarea
-                                value={templateFormData.email_body}
-                                onChange={(e) =>
-                                  setTemplateFormData({ ...templateFormData, email_body: e.target.value })
-                                }
-                                placeholder="Dear {name},&#10;&#10;Thank you for your interest in PlastiWorld 2026..."
-                                rows={10}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-700 resize-none"
-                              />
-                              <p className="mt-1 text-xs text-gray-500">
-                                You can use variables like {"{name}"}, {"{email}"}, {"{phone}"} in the body
-                              </p>
+                              <div className="flex items-center justify-between mb-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  Email Body *
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowEmailPreview(!showEmailPreview)}
+                                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors"
+                                >
+                                  {showEmailPreview ? (
+                                    <>
+                                      <Edit2 className="h-4 w-4" />
+                                      Edit
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye className="h-4 w-4" />
+                                      Preview
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                              
+                              {showEmailPreview ? (
+                                <div className="border border-gray-300 rounded-lg bg-white overflow-hidden">
+                                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                                    <div className="text-sm font-medium text-gray-700 mb-1">Email Preview</div>
+                                    <div className="text-xs text-gray-500">
+                                      Subject: <span className="font-medium">{getEmailPreview().previewSubject || "(No subject)"}</span>
+                                    </div>
+                                  </div>
+                                  <div 
+                                    className="p-6 min-h-[300px] bg-white"
+                                    style={{
+                                      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                                      lineHeight: '1.6',
+                                      color: '#374151',
+                                      fontSize: '14px'
+                                    }}
+                                  >
+                                    <style>{`
+                                      .email-preview-content h1,
+                                      .email-preview-content h2,
+                                      .email-preview-content h3 {
+                                        margin-top: 1em;
+                                        margin-bottom: 0.5em;
+                                        font-weight: 600;
+                                      }
+                                      .email-preview-content h1 { font-size: 24px; }
+                                      .email-preview-content h2 { font-size: 20px; }
+                                      .email-preview-content h3 { font-size: 18px; }
+                                      .email-preview-content p {
+                                        margin: 0.75em 0;
+                                      }
+                                      .email-preview-content ul,
+                                      .email-preview-content ol {
+                                        margin: 0.75em 0;
+                                        padding-left: 1.5em;
+                                      }
+                                      .email-preview-content li {
+                                        margin: 0.25em 0;
+                                      }
+                                      .email-preview-content a {
+                                        color: #ea580c;
+                                        text-decoration: underline;
+                                      }
+                                      .email-preview-content strong {
+                                        font-weight: 600;
+                                      }
+                                      .email-preview-content em {
+                                        font-style: italic;
+                                      }
+                                      .email-preview-content u {
+                                        text-decoration: underline;
+                                      }
+                                    `}</style>
+                                    <div 
+                                      className="email-preview-content"
+                                      dangerouslySetInnerHTML={{ __html: getEmailPreview().previewBody || '<p style="color: #9ca3af; font-style: italic;">No content yet. Add some content to see the preview.</p>' }}
+                                    />
+                                  </div>
+                                  <div className="bg-blue-50 border-t border-blue-200 px-4 py-2">
+                                    <p className="text-xs text-blue-700">
+                                      <strong>Note:</strong> Variables like {"{name}"}, {"{email}"}, {"{phone}"} are shown with sample values. Actual emails will use real recipient data.
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-orange-500 focus-within:border-orange-500 overflow-hidden">
+                                    <style>{`
+                                      .ql-container {
+                                        font-family: inherit;
+                                        font-size: 14px;
+                                        min-height: 200px;
+                                      }
+                                      .ql-editor {
+                                        min-height: 200px;
+                                        color: #374151;
+                                      }
+                                      .ql-editor.ql-blank::before {
+                                        color: #9ca3af;
+                                        font-style: normal;
+                                      }
+                                      .ql-toolbar {
+                                        border-top: none;
+                                        border-left: none;
+                                        border-right: none;
+                                        border-bottom: 1px solid #e5e7eb;
+                                        padding: 12px;
+                                      }
+                                      .ql-container {
+                                        border-bottom: none;
+                                        border-left: none;
+                                        border-right: none;
+                                        border-top: none;
+                                      }
+                                      .ql-editor {
+                                        padding: 16px;
+                                      }
+                                    `}</style>
+                                    <ReactQuill
+                                      theme="snow"
+                                      value={templateFormData.email_body}
+                                      onChange={(value) =>
+                                        setTemplateFormData({ ...templateFormData, email_body: value })
+                                      }
+                                      placeholder="Dear {name},&#10;&#10;Thank you for your interest in PlastiWorld 2026..."
+                                      modules={{
+                                        toolbar: [
+                                          [{ 'header': [1, 2, 3, false] }],
+                                          ['bold', 'italic', 'underline', 'strike'],
+                                          [{ 'color': [] }, { 'background': [] }],
+                                          [{ 'font': [] }],
+                                          [{ 'size': ['small', false, 'large', 'huge'] }],
+                                          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                          [{ 'align': [] }],
+                                          ['link'],
+                                          ['clean']
+                                        ],
+                                      }}
+                                      formats={[
+                                        'header', 'font', 'size',
+                                        'bold', 'italic', 'underline', 'strike',
+                                        'color', 'background',
+                                        'list', 'bullet', 'align',
+                                        'link'
+                                      ]}
+                                    />
+                                  </div>
+                                  <p className="mt-1 text-xs text-gray-500">
+                                    You can use variables like {"{name}"}, {"{email}"}, {"{phone}"} in the body. Formatting (bold, colors, fonts) will be preserved when pasting from Word, emails, or web pages.
+                                  </p>
+                                </>
+                              )}
                             </div>
 
                             <div className="flex items-center">
@@ -2969,6 +3375,464 @@ const ManageChatbotUIPage = () => {
                       <>
                         <Mail className="h-5 w-5 mr-2" />
                         Update Email Settings
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* WhatsApp Proposal Configuration Section */}
+              {activeSection === "whatsapp-proposal" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <MessageSquare className="h-6 w-6 text-green-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">WhatsApp Sidebar Proposal Configuration</h2>
+                  </div>
+
+                  {/* Enable WhatsApp Proposal Toggle */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Show WhatsApp Proposal in Sidebar
+                      </label>
+                      <button
+                        onClick={() => setWhatsappProposalEnabled(!whatsappProposalEnabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          whatsappProposalEnabled ? "bg-green-600" : "bg-gray-300"
+                        } cursor-pointer`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            whatsappProposalEnabled ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enable this to show a WhatsApp proposal option in the sidebar. Users can send proposals via WhatsApp using configured templates.
+                    </p>
+                  </div>
+
+                  {/* Display Text */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Display Text in Sidebar
+                    </label>
+                    <input
+                      type="text"
+                      value={whatsappProposalText}
+                      onChange={(e) => setWhatsappProposalText(e.target.value)}
+                      placeholder="Send Proposal via WhatsApp"
+                      maxLength={100}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-700"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      {whatsappProposalText.length}/100 characters
+                    </p>
+                  </div>
+
+                  {/* Default AISensy Configuration */}
+                  <div className="mb-6 border-t pt-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Default AISensy Configuration</h3>
+                    <p className="text-xs text-gray-500 mb-4">
+                      These settings will be used as fallback if individual templates don't specify their own AISensy configuration. If not set here, environment variables will be used.
+                    </p>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Default API Key (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={whatsappProposalDefaultApiKey}
+                          onChange={(e) => setWhatsappProposalDefaultApiKey(e.target.value)}
+                          placeholder="Leave empty to use environment variable"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-700"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Default Org Slug (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={whatsappProposalDefaultOrgSlug}
+                          onChange={(e) => setWhatsappProposalDefaultOrgSlug(e.target.value)}
+                          placeholder="Leave empty to use environment variable"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-700"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Default Sender Name (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={whatsappProposalDefaultSenderName}
+                          onChange={(e) => setWhatsappProposalDefaultSenderName(e.target.value)}
+                          placeholder="Leave empty to use environment variable"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-700"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Default Country Code
+                        </label>
+                        <input
+                          type="text"
+                          value={whatsappProposalDefaultCountryCode}
+                          onChange={(e) => setWhatsappProposalDefaultCountryCode(e.target.value)}
+                          placeholder="91"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-700"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Country code for phone numbers (e.g., 91 for India, 1 for USA)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Proposal Templates Management */}
+                  <div className="mb-6 border-t pt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-800">Proposal Templates</h3>
+                      <button
+                        onClick={handleAddProposalTemplate}
+                        className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add New Template
+                      </button>
+                    </div>
+
+                    {loadingProposalTemplates ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-green-600" />
+                        <span className="ml-2 text-gray-600">Loading templates...</span>
+                      </div>
+                    ) : whatsappProposalTemplates.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>No proposal templates yet. Click "Add New Template" to create one.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {whatsappProposalTemplates.map((template) => (
+                          <div
+                            key={template._id}
+                            className="border border-gray-300 rounded-lg p-4 hover:border-green-500 transition-colors"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h4 className="font-semibold text-gray-800">{template.display_name}</h4>
+                                  {!template.is_active && (
+                                    <span className="px-2 py-0.5 text-xs bg-gray-200 text-gray-600 rounded">
+                                      Inactive
+                                    </span>
+                                  )}
+                                </div>
+                                {template.description && (
+                                  <p className="text-sm text-gray-600 mb-2">{template.description}</p>
+                                )}
+                                <div className="text-xs text-gray-500 space-y-1">
+                                  <p><strong>Campaign:</strong> {template.campaign_name}</p>
+                                  <p><strong>Template:</strong> {template.template_name}</p>
+                                  {template.template_params && template.template_params.length > 0 && (
+                                    <p><strong>Parameters:</strong> {template.template_params.length} configured</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 ml-4">
+                                <button
+                                  onClick={() => handleEditProposalTemplate(template)}
+                                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteProposalTemplate(template._id)}
+                                  disabled={deletingProposalTemplate === template._id}
+                                  className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                                >
+                                  {deletingProposalTemplate === template._id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    "Delete"
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Template Form Modal */}
+                  {showProposalTemplateForm && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-semibold text-gray-800">
+                              {editingProposalTemplate ? "Edit Proposal Template" : "Add New Proposal Template"}
+                            </h3>
+                            <button
+                              onClick={() => {
+                                setShowProposalTemplateForm(false);
+                                setEditingProposalTemplate(null);
+                              }}
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              <X className="h-5 w-5" />
+                            </button>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Display Name <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={proposalTemplateFormData.display_name}
+                                onChange={(e) =>
+                                  setProposalTemplateFormData({
+                                    ...proposalTemplateFormData,
+                                    display_name: e.target.value,
+                                  })
+                                }
+                                placeholder="e.g., Service Proposal"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Description (optional)
+                              </label>
+                              <input
+                                type="text"
+                                value={proposalTemplateFormData.description}
+                                onChange={(e) =>
+                                  setProposalTemplateFormData({
+                                    ...proposalTemplateFormData,
+                                    description: e.target.value,
+                                  })
+                                }
+                                placeholder="Brief description of this template"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Campaign Name <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={proposalTemplateFormData.campaign_name}
+                                onChange={(e) =>
+                                  setProposalTemplateFormData({
+                                    ...proposalTemplateFormData,
+                                    campaign_name: e.target.value,
+                                  })
+                                }
+                                placeholder="e.g., proposalsending"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Template Name <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={proposalTemplateFormData.template_name}
+                                onChange={(e) =>
+                                  setProposalTemplateFormData({
+                                    ...proposalTemplateFormData,
+                                    template_name: e.target.value,
+                                  })
+                                }
+                                placeholder="AISensy template name"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  API Key (optional)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={proposalTemplateFormData.api_key}
+                                  onChange={(e) =>
+                                    setProposalTemplateFormData({
+                                      ...proposalTemplateFormData,
+                                      api_key: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Override default"
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Org Slug (optional)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={proposalTemplateFormData.org_slug}
+                                  onChange={(e) =>
+                                    setProposalTemplateFormData({
+                                      ...proposalTemplateFormData,
+                                      org_slug: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Override default"
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Sender Name (optional)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={proposalTemplateFormData.sender_name}
+                                  onChange={(e) =>
+                                    setProposalTemplateFormData({
+                                      ...proposalTemplateFormData,
+                                      sender_name: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Override default"
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Country Code
+                                </label>
+                                <input
+                                  type="text"
+                                  value={proposalTemplateFormData.country_code}
+                                  onChange={(e) =>
+                                    setProposalTemplateFormData({
+                                      ...proposalTemplateFormData,
+                                      country_code: e.target.value,
+                                    })
+                                  }
+                                  placeholder="91"
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Order
+                              </label>
+                              <input
+                                type="number"
+                                value={proposalTemplateFormData.order}
+                                onChange={(e) =>
+                                  setProposalTemplateFormData({
+                                    ...proposalTemplateFormData,
+                                    order: parseInt(e.target.value) || 0,
+                                  })
+                                }
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                              />
+                              <p className="mt-1 text-xs text-gray-500">
+                                Lower numbers appear first in the list
+                              </p>
+                            </div>
+
+                            <div className="flex items-center">
+                              <input
+                                type="checkbox"
+                                id="proposalTemplateActive"
+                                checked={proposalTemplateFormData.is_active}
+                                onChange={(e) =>
+                                  setProposalTemplateFormData({
+                                    ...proposalTemplateFormData,
+                                    is_active: e.target.checked,
+                                  })
+                                }
+                                className="mr-2 h-4 w-4 text-green-600 focus:ring-green-500"
+                              />
+                              <label htmlFor="proposalTemplateActive" className="text-sm text-gray-700">
+                                Template is active (will be shown to users)
+                              </label>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 mt-6">
+                            <button
+                              onClick={handleSaveProposalTemplate}
+                              disabled={
+                                savingTemplate ||
+                                !proposalTemplateFormData.display_name.trim() ||
+                                !proposalTemplateFormData.campaign_name.trim() ||
+                                !proposalTemplateFormData.template_name.trim()
+                              }
+                              className="flex-1 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            >
+                              {savingTemplate ? (
+                                <>
+                                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                                  Saving...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="h-5 w-5 mr-2" />
+                                  {editingProposalTemplate ? "Update Template" : "Create Template"}
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowProposalTemplateForm(false);
+                                setEditingProposalTemplate(null);
+                              }}
+                              className="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleUpdateProposalSettings}
+                    disabled={updatingProposalSettings || !whatsappProposalText.trim()}
+                    className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+                  >
+                    {updatingProposalSettings ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <MessageSquare className="h-5 w-5 mr-2" />
+                        Update Proposal Settings
                       </>
                     )}
                   </button>
@@ -3379,25 +4243,26 @@ const ManageChatbotUIPage = () => {
                             </div>
                           </div>
 
-                          {/* Save Button */}
-                          <div className="flex justify-end pt-4 border-t">
-                            <button
-                              onClick={handleUpdateZohoConfig}
-                              disabled={updatingZoho}
-                              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                            >
-                              {updatingZoho ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Updating...
-                                </>
-                              ) : (
-                                "Update Zoho Configuration"
-                              )}
-                            </button>
-                          </div>
                         </div>
                       )}
+
+                      {/* Save Button - Always visible regardless of enabled state */}
+                      <div className="flex justify-end pt-4 border-t mt-6">
+                        <button
+                          onClick={handleUpdateZohoConfig}
+                          disabled={updatingZoho}
+                          className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                        >
+                          {updatingZoho ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Updating...
+                            </>
+                          ) : (
+                            "Update Zoho Configuration"
+                          )}
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
@@ -3444,7 +4309,7 @@ const ManageChatbotUIPage = () => {
                       </div>
 
                       {intentConfig.enabled && (
-                        <div className="space-y-6">
+                        <div className="space-y-6 mb-6">
                           {/* Keywords Management */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -3553,26 +4418,26 @@ const ManageChatbotUIPage = () => {
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                             />
                           </div>
-
-                          {/* Save Button */}
-                          <div className="flex justify-end pt-4 border-t">
-                            <button
-                              onClick={handleUpdateIntentConfig}
-                              disabled={updatingIntent}
-                              className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                            >
-                              {updatingIntent ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Updating...
-                                </>
-                              ) : (
-                                "Update Intent Configuration"
-                              )}
-                            </button>
-                          </div>
                         </div>
                       )}
+
+                      {/* Save Button - Always visible */}
+                      <div className="flex justify-end pt-4 border-t">
+                        <button
+                          onClick={handleUpdateIntentConfig}
+                          disabled={updatingIntent}
+                          className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                        >
+                          {updatingIntent ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Updating...
+                            </>
+                          ) : (
+                            "Update Intent Configuration"
+                          )}
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
@@ -4141,6 +5006,10 @@ const ManageChatbotUIPage = () => {
                                 <option value="twitter">Twitter/X</option>
                                 <option value="whatsapp">WhatsApp</option>
                                 <option value="telegram">Telegram</option>
+                                <option value="indiamart">IndiaMART</option>
+                                <option value="justdial">JustDial</option>
+                                <option value="tradeindia">TradeIndia</option>
+                                <option value="exportersindia">ExportersIndia</option>
                                 <option value="custom">Custom Link</option>
                               </select>
                               <p className="mt-1 text-xs text-gray-500">
@@ -4854,6 +5723,221 @@ const ManageChatbotUIPage = () => {
                       <>
                         <Monitor className="h-5 w-5 mr-2" />
                         Update Browser Tab Settings
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Input Placeholder Configuration Section */}
+              {activeSection === "placeholders" && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <Type className="h-6 w-6 text-emerald-600 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-800">Input Placeholder Settings</h2>
+      </div>
+
+                  {/* Enable Rotating Placeholders Toggle */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <label className="text-lg font-semibold text-gray-800">Enable Rotating Placeholders</label>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Show animated placeholder text that cycles through multiple options
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setInputPlaceholdersEnabled(!inputPlaceholdersEnabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          inputPlaceholdersEnabled ? "bg-emerald-600" : "bg-gray-300"
+                        } cursor-pointer`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            inputPlaceholdersEnabled ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {inputPlaceholdersEnabled && (
+                    <>
+                      {/* Placeholder List */}
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Input Placeholders (Minimum 3, Maximum 10)
+                          </label>
+                          <button
+                            onClick={() => {
+                              if (inputPlaceholders.length < 10) {
+                                setInputPlaceholders([...inputPlaceholders, ""]);
+                              } else {
+                                toast.warning("Maximum 10 placeholders allowed");
+                              }
+                            }}
+                            disabled={inputPlaceholders.length >= 10}
+                            className="flex items-center px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Placeholder
+                          </button>
+                        </div>
+
+                        <div className="space-y-3">
+                          {inputPlaceholders.map((placeholder, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={placeholder}
+                                onChange={(e) => {
+                                  const newPlaceholders = [...inputPlaceholders];
+                                  newPlaceholders[index] = e.target.value;
+                                  setInputPlaceholders(newPlaceholders);
+                                }}
+                                placeholder={`Placeholder ${index + 1}...`}
+                                maxLength={100}
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-700"
+                              />
+                              <span className="text-xs text-gray-500 w-16 text-right">
+                                {placeholder.length}/100
+                              </span>
+                              <button
+                                onClick={() => {
+                                  if (inputPlaceholders.length > 3) {
+                                    const newPlaceholders = inputPlaceholders.filter((_, i) => i !== index);
+                                    setInputPlaceholders(newPlaceholders);
+                                  } else {
+                                    toast.warning("Minimum 3 placeholders required");
+                                  }
+                                }}
+                                disabled={inputPlaceholders.length <= 3}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Remove placeholder"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Animation Speed */}
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Animation Speed
+                        </label>
+                        <select
+                          value={inputPlaceholderSpeed}
+                          onChange={(e) => setInputPlaceholderSpeed(parseFloat(e.target.value))}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-700 bg-white"
+                        >
+                          <option value={1.5}>Fast (1.5s)</option>
+                          <option value={2.5}>Medium (2.5s)</option>
+                          <option value={3.5}>Slow (3.5s)</option>
+                        </select>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Time between placeholder changes
+                        </p>
+                      </div>
+
+                      {/* Animation Type */}
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                          Animation Type
+                        </label>
+                        <div className="space-y-3">
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name="placeholderAnimation"
+                              value="fade"
+                              checked={inputPlaceholderAnimation === "fade"}
+                              onChange={(e) => setInputPlaceholderAnimation(e.target.value)}
+                              className="mr-3 h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <span className="text-gray-700">Fade (smooth transition)</span>
+                          </label>
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name="placeholderAnimation"
+                              value="typewriter"
+                              checked={inputPlaceholderAnimation === "typewriter"}
+                              onChange={(e) => setInputPlaceholderAnimation(e.target.value)}
+                              className="mr-3 h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <span className="text-gray-700">Typewriter (character by character)</span>
+                          </label>
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name="placeholderAnimation"
+                              value="slide"
+                              checked={inputPlaceholderAnimation === "slide"}
+                              onChange={(e) => setInputPlaceholderAnimation(e.target.value)}
+                              className="mr-3 h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <span className="text-gray-700">Slide (text slides in/out)</span>
+                          </label>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <button
+                    onClick={async () => {
+                      if (!selectedChatbotId) {
+                        toast.error("Please select a chatbot first");
+                        return;
+                      }
+                      if (inputPlaceholdersEnabled) {
+                        // Validate placeholders
+                        const validPlaceholders = inputPlaceholders.filter(p => p.trim().length > 0);
+                        if (validPlaceholders.length < 3) {
+                          toast.error("Please provide at least 3 placeholders");
+                          return;
+                        }
+                        if (validPlaceholders.length > 10) {
+                          toast.error("Maximum 10 placeholders allowed");
+                          return;
+                        }
+                        // Check for empty placeholders
+                        if (inputPlaceholders.some(p => p.trim().length === 0)) {
+                          toast.error("Please fill in all placeholder fields");
+                          return;
+                        }
+                      }
+                      try {
+                        setUpdatingPlaceholders(true);
+                        await updateChatbotUIInputPlaceholders(
+                          selectedChatbotId,
+                          inputPlaceholdersEnabled,
+                          inputPlaceholders.filter(p => p.trim().length > 0),
+                          inputPlaceholderSpeed,
+                          inputPlaceholderAnimation
+                        );
+                        toast.success("Placeholder settings updated successfully! ✅");
+                      } catch (error) {
+                        console.error("Error updating placeholder config:", error);
+                        toast.error(error.response?.data?.message || "Failed to update placeholder settings");
+                      } finally {
+                        setUpdatingPlaceholders(false);
+                      }
+                    }}
+                    disabled={updatingPlaceholders}
+                    className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+                  >
+                    {updatingPlaceholders ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Type className="h-5 w-5 mr-2" />
+                        Update Placeholder Settings
                       </>
                     )}
                   </button>

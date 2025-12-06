@@ -13,7 +13,6 @@ import {
   RefreshCw,
   Settings,
   Palette,
-  Upload,
   Rocket,
   Building,
   Link,
@@ -418,10 +417,6 @@ const ManageChatbotsPage = () => {
               className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] shadow-sm"
             />
           </div>
-          <button className="flex items-center justify-center gap-2 px-4 py-2 bg-[#1e3a8a] text-white font-semibold rounded-lg hover:bg-[#1e40af] transition-colors shadow-md">
-            <Upload size={16} />
-            Upload
-          </button>
         </div>
       </header>
 

@@ -1,8 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://chat-apiv3.0804.in/api",
-  // baseURL: "http://localhost:5000/api",
+ // baseURL: "https://chat-apiv3.0804.in/api",
+   baseURL: "http://localhost:5000/api",
   withCredentials: true,
 });
 
@@ -385,6 +385,43 @@ export const updateChatbotUITabConfig = (chatbotId, tabTitle, faviconUrl) => {
   return api.put(`/chatbot/${chatbotId}/ui-config/tab`, {
     tab_title: tabTitle || null,
     favicon_url: faviconUrl || null,
+  });
+};
+
+export const updateChatbotUIInputPlaceholders = (chatbotId, placeholdersEnabled, placeholders, placeholderSpeed, placeholderAnimation) => {
+  return api.put(`/chatbot/${chatbotId}/ui-config/placeholders`, {
+    placeholders_enabled: placeholdersEnabled,
+    placeholders: placeholders,
+    placeholder_speed: placeholderSpeed,
+    placeholder_animation: placeholderAnimation,
+  });
+};
+
+// WhatsApp Proposal Template API endpoints
+export const getWhatsAppProposalTemplates = (chatbotId) => {
+  return api.get(`/chatbot/${chatbotId}/whatsapp-proposal-templates/admin`);
+};
+
+export const createWhatsAppProposalTemplate = (chatbotId, templateData) => {
+  return api.post(`/chatbot/${chatbotId}/whatsapp-proposal-templates`, templateData);
+};
+
+export const updateWhatsAppProposalTemplate = (chatbotId, templateId, templateData) => {
+  return api.put(`/chatbot/${chatbotId}/whatsapp-proposal-templates/${templateId}`, templateData);
+};
+
+export const deleteWhatsAppProposalTemplate = (chatbotId, templateId) => {
+  return api.delete(`/chatbot/${chatbotId}/whatsapp-proposal-templates/${templateId}`);
+};
+
+export const updateWhatsAppProposalSettings = (chatbotId, enabled, displayText, defaultApiKey, defaultOrgSlug, defaultSenderName, defaultCountryCode) => {
+  return api.put(`/chatbot/${chatbotId}/sidebar-config/whatsapp-proposal`, {
+    enabled,
+    display_text: displayText,
+    default_api_key: defaultApiKey,
+    default_org_slug: defaultOrgSlug,
+    default_sender_name: defaultSenderName,
+    default_country_code: defaultCountryCode,
   });
 };
 
